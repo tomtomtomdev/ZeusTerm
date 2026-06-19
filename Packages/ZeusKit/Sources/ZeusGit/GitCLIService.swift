@@ -1,18 +1,49 @@
 import Foundation
 import ZeusDomain
 
-/// Reads git data by shelling out to the `git` CLI. Worktree enumeration goes through
-/// `git worktree list --porcelain` (libgit2's worktree bindings are thin — see SPEC §5).
-/// P0 implements worktree discovery; branch/commit reads are filled in P2.
+/// Reads git data by shelling out to the `git` CLI (SPEC §5: libgit2's worktree bindings
+/// are thin, so worktrees, branches, and commits all go through porcelain/format output).
+/// Worktrees come from `git worktree list --porcelain`, branches from `git for-each-ref`,
+/// and commits from a `git log` revwalk (paginated, never the full history).
 public struct GitCLIService: GitReading {
+    /// Field delimiter for `git log` rows — ASCII Unit Separator. Shared by the `--format`
+    /// string and `parseCommits` so the producer and parser never drift apart.
+    private static let fieldSeparator = "\u{1f}"
+
     public init() {}
 
     public func readRepository(at url: URL) async throws -> Repository {
         let top = try runGit(["rev-parse", "--show-toplevel"], in: url)
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let root = URL(fileURLWithPath: top.isEmpty ? url.path : top)
-        let worktrees = parseWorktrees(try runGit(["worktree", "list", "--porcelain"], in: root))
+        var worktrees = parseWorktrees(try runGit(["worktree", "list", "--porcelain"], in: root))
+
+        // Branches are repo-level refs; surface the full local set under the main worktree
+        // (linked worktrees keep their porcelain-derived checked-out branch).
+        let branches = parseBranches(try runGit(branchRefArgs, in: root))
+        if let mainIndex = worktrees.firstIndex(where: \.isMain) {
+            worktrees[mainIndex].branches = branches
+        }
         return Repository(name: root.lastPathComponent, commonDir: root, worktrees: worktrees)
+    }
+
+    public func commits(forBranch branch: String, in repo: URL, limit: Int, skip: Int) async throws -> [Commit] {
+        let sep = Self.fieldSeparator
+        let format = "%H\(sep)%s\(sep)%an\(sep)%aI"
+        // `--end-of-options` keeps a `-`-leading branch name from being parsed as a git
+        // flag (defensive: branch values reach this public port from outside ZeusGit).
+        let output = try runGit(
+            ["log", "--format=\(format)", "-n", String(limit), "--skip", String(skip),
+             "--end-of-options", branch],
+            in: repo)
+        return parseCommits(output)
+    }
+
+    /// `git for-each-ref` args producing tab-separated local-branch rows (see `parseBranches`).
+    private var branchRefArgs: [String] {
+        ["for-each-ref",
+         "--format=%(refname:short)\t%(HEAD)\t%(upstream:short)\t%(upstream:track)",
+         "refs/heads"]
     }
 
     /// Parses `git worktree list --porcelain`. The first worktree block is the main checkout.
@@ -42,6 +73,40 @@ public struct GitCLIService: GitReading {
         }
         flush()
         return result
+    }
+
+    /// Parses tab-separated `git for-each-ref` output for local branches.
+    /// Format: `%(refname:short)\t%(HEAD)\t%(upstream:short)\t%(upstream:track)`.
+    func parseBranches(_ output: String) -> [Branch] {
+        output.split(separator: "\n", omittingEmptySubsequences: true).compactMap { raw in
+            let fields = String(raw).components(separatedBy: "\t")
+            guard let name = fields.first, !name.isEmpty else { return nil }
+            let isCurrent = fields.count > 1 && fields[1].trimmingCharacters(in: .whitespaces) == "*"
+            let upstream = fields.count > 2 && !fields[2].isEmpty ? fields[2] : nil
+            let (ahead, behind) = parseTrack(fields.count > 3 ? fields[3] : "")
+            return Branch(name: name, isCurrent: isCurrent, upstream: upstream, ahead: ahead, behind: behind)
+        }
+    }
+
+    /// Extracts ahead/behind counts from a `%(upstream:track)` value like `[ahead 1, behind 2]`.
+    private func parseTrack(_ track: String) -> (ahead: Int, behind: Int) {
+        func count(after keyword: String) -> Int {
+            guard let range = track.range(of: keyword) else { return 0 }
+            return Int(track[range.upperBound...].prefix { $0.isNumber }) ?? 0
+        }
+        return (count(after: "ahead "), count(after: "behind "))
+    }
+
+    /// Parses unit-separated (0x1f) `git log` output. Format: `%H%x1f%s%x1f%an%x1f%aI`,
+    /// one commit per line. `%aI` is strict ISO 8601, so dates parse unambiguously.
+    func parseCommits(_ output: String) -> [Commit] {
+        let formatter = ISO8601DateFormatter()
+        return output.split(separator: "\n", omittingEmptySubsequences: true).compactMap { raw in
+            let fields = String(raw).components(separatedBy: Self.fieldSeparator)
+            guard fields.count == 4, !fields[0].isEmpty else { return nil }
+            let date = formatter.date(from: fields[3]) ?? Date(timeIntervalSince1970: 0)
+            return Commit(id: fields[0], summary: fields[1], authorName: fields[2], date: date)
+        }
     }
 
     /// `git --version` — used as a lightweight availability check / smoke test.

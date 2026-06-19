@@ -12,6 +12,10 @@ public protocol ProjectScanning: Sendable {
 /// Reads git model data for a repository (feature #2).
 public protocol GitReading: Sendable {
     func readRepository(at url: URL) async throws -> Repository
+
+    /// Commits reachable from `branch`, newest first. Paginated and lazy —
+    /// callers page on scroll; the full history is never walked eagerly (SPEC §2.2).
+    func commits(forBranch branch: String, in repo: URL, limit: Int, skip: Int) async throws -> [Commit]
 }
 
 /// Provides command autosuggestions for the right-arrow accept feature (#4).
