@@ -146,6 +146,11 @@ Each spike is a tiny throwaway prototype with a pass/fail acceptance test. Run t
 enumeration (Spotlight only as accelerator); `git` CLI shell-out for worktrees; Developer ID +
 non-sandboxed for v1.
 
+### Spike outcomes
+| # | Date | Verdict | Notes |
+|---|------|---------|-------|
+| S1 | 2026-06-19 | ✅ **GO — SwiftTerm** | `LocalProcessTerminalView` (SwiftTerm 1.13.0) wrapped in a SwiftUI `NSViewRepresentable` (`ZeusTerminal.TerminalEmulatorView`) gives a real PTY: harness spawns a `-zsh` login shell on `/dev/ttys005` as foreground session leader. Truecolor + 256-color render and `htop`/`vim` reflow on resize (verified in the `S1TerminalSpike` run harness). Shell launch params (`TERM=xterm-256color`, `COLORTERM=truecolor`, login argv0) are pure + unit-tested in `TerminalLaunchConfig`. Host app must stay **non-sandboxed** (§8). |
+
 ---
 
 ## 5. Tech Stack & Dependencies
