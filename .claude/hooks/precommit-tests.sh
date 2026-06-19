@@ -8,23 +8,31 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"   # .claude/hooks -> project root
 PROJ="$ROOT/Zeus/Zeus.xcodeproj"
+PKG="$ROOT/Packages/ZeusKit"
 LOG="/tmp/zeus-precommit-tests.log"
+: > "$LOG"
 
-if [ ! -d "$PROJ" ]; then
-  # Can't find the project — fail open so we never wedge commits on a misconfig.
+deny() {
+  printf '%s' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Commit blocked by Zeus green-bar gate: tests are RED. Fix them before committing. Full failure output: /tmp/zeus-precommit-tests.log"}}'
   exit 0
+}
+
+# 1) ZeusKit package unit tests (fast — the core domain/adapter logic).
+if [ -f "$PKG/Package.swift" ]; then
+  echo "=== swift test (ZeusKit) ===" >>"$LOG"
+  if ! ( cd "$PKG" && swift test ) >>"$LOG" 2>&1; then deny; fi
 fi
 
-if xcodebuild test \
-      -project "$PROJ" \
-      -scheme Zeus \
-      -destination 'platform=macOS' \
-      -only-testing:ZeusTests \
-      -quiet >"$LOG" 2>&1; then
-  # Green bar -> allow commit (no output = proceed through normal permission flow).
-  exit 0
+# 2) App unit tests. UI tests run separately via /verify (signing + app launch, too slow here).
+if [ -d "$PROJ" ]; then
+  echo "=== xcodebuild test (ZeusTests) ===" >>"$LOG"
+  if ! xcodebuild test \
+        -project "$PROJ" \
+        -scheme Zeus \
+        -destination 'platform=macOS' \
+        -only-testing:ZeusTests \
+        -quiet >>"$LOG" 2>&1; then deny; fi
 fi
 
-# Red bar -> deny with a static reason (no string interpolation = no JSON-escaping hazard).
-printf '%s' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Commit blocked by Zeus green-bar gate: `xcodebuild test` (scheme Zeus, target ZeusTests) FAILED. Fix the red tests before committing. Full failure output: /tmp/zeus-precommit-tests.log"}}'
+# Green bar -> allow commit (no output = proceed through normal permission flow).
 exit 0

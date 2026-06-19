@@ -1,18 +1,17 @@
-//
-//  ContentView.swift
-//  Zeus
-//
-//  Created by tomtomtom on 6/19/26.
-//
-//  P0 shell: a three-pane window (project rail | repo tree | terminal).
-//  NOTE: this mirrors ZeusUI.AppShellView in pure SwiftUI until the ZeusKit local
-//  package is added to this target (Xcode ▸ File ▸ Add Package Dependencies ▸ Add Local
-//  ▸ Packages/ZeusKit). After wiring, replace this body with `AppShellView()`.
-
 import SwiftUI
+import ZeusDomain
 
-struct ContentView: View {
-    var body: some View {
+/// The top-level three-pane shell: project rail | repo tree | terminal pane
+/// (features #5 side-tabs, #2 tree, #6 terminal, #7 gradient). P0 shows placeholder
+/// content; later phases bind each pane to its store.
+public struct AppShellView: View {
+    public var gradient: GradientConfig
+
+    public init(gradient: GradientConfig = .aurora) {
+        self.gradient = gradient
+    }
+
+    public var body: some View {
         NavigationSplitView {
             List {
                 Label("Zeus", systemImage: "bolt.fill")
@@ -29,14 +28,7 @@ struct ContentView: View {
             .frame(minWidth: 280)
         } detail: {
             ZStack {
-                LinearGradient(
-                    colors: [Color(red: 0.06, green: 0.13, blue: 0.15),
-                             Color(red: 0.11, green: 0.71, blue: 0.88)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
-
+                GradientBackground(config: gradient)
                 VStack(spacing: 8) {
                     Image(systemName: "terminal")
                         .font(.system(size: 40))
@@ -51,6 +43,6 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView()
+    AppShellView()
         .frame(width: 900, height: 600)
 }
