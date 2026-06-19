@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;}
+  body{margin:0;}
+  @keyframes twinkle{0%,100%{opacity:.55;}50%{opacity:1;}}
+  @keyframes blink{0%,49%{opacity:1;}50%,100%{opacity:0;}}
+  @keyframes orbit{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+</style>
+</helmet>
+
+<div style="min-width:100%; width:max-content; min-height:100vh; box-sizing:border-box; padding:48px; background:#101217; font-family:'Geist',-apple-system,sans-serif;">
+
+  <!-- header / reasoning -->
+  <div style="max-width:960px; margin:0 0 44px 0; color:#e7eaf2;">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:18px;">
+      <div style="width:34px; height:34px; border-radius:9px; background:linear-gradient(145deg,#1b1f2b,#11141b); border:1px solid rgba(245,193,81,.3); display:flex; align-items:center; justify-content:center;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="#F5C451"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>
+      </div>
+      <span style="font-size:22px; font-weight:700; letter-spacing:-.01em;">ZeusTerm</span>
+      <span style="font-size:13px; color:#7c8597; padding-top:4px;">terminal-first project scanner — concept directions</span>
+    </div>
+    <p style="font-size:14.5px; line-height:1.65; color:#9aa3b8; margin:0 0 10px 0; text-wrap:pretty;">
+      ZeusTerm scans your whole Mac and renders every detected repo as a <strong style="color:#cdd4e6; font-weight:600;">star in a constellation</strong> — clustered by project type, colored by git status. It's a terminal at heart: click a star and the shell <em style="color:#cdd4e6; font-style:normal;">cd</em>'s straight into the project. Drill into one and its branches &amp; commits become their own constellation (the work-tree map you asked for).
+    </p>
+    <p style="font-size:13px; line-height:1.6; color:#69718a; margin:0; text-wrap:pretty;">
+      Below: <strong style="color:#8b93a7; font-weight:600;">①</strong> the Constellation Hub (dark), <strong style="color:#8b93a7; font-weight:600;">②</strong> the git work-tree map, <strong style="color:#8b93a7; font-weight:600;">③</strong> light mode, <strong style="color:#8b93a7; font-weight:600;">④</strong> one project's many worktrees in orbit. Stars twinkle live. No OS chrome, per your call.
+    </p>
+  </div>
+
+  <!-- ===================== FRAMES ROW ===================== -->
+  <div style="display:flex; gap:60px; align-items:flex-start;">
+
+    <!-- ============ FRAME 1 : CONSTELLATION HUB (DARK) ============ -->
+    <div style="flex:none;">
+      <div style="font:600 12px 'Geist',sans-serif; color:#8a92a4; letter-spacing:.04em; margin:0 0 14px 4px;">① CONSTELLATION HUB — DARK</div>
+      <div style="width:1280px; height:800px; background:#0A0B10; border-radius:14px; border:1px solid rgba(255,255,255,.07); box-shadow:0 40px 90px rgba(0,0,0,.55); overflow:hidden; display:flex; flex-direction:column; color:#E7EAF2;">
+
+        <!-- topbar -->
+        <div style="height:54px; flex:none; display:flex; align-items:center; gap:14px; padding:0 16px; border-bottom:1px solid rgba(255,255,255,.06); background:linear-gradient(#0e1016,#0b0c11);">
+          <div style="display:flex; align-items:center; gap:9px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#F5C451"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>
+            <span style="font-weight:700; font-size:15px; letter-spacing:-.01em;">ZeusTerm</span>
+          </div>
+          <div style="width:1px; height:18px; background:rgba(255,255,255,.1);"></div>
+          <div style="display:flex; align-items:center; gap:7px; font-size:12.5px; color:#7c8597;">
+            <span style="width:7px; height:7px; border-radius:50%; background:#35D08B; box-shadow:0 0 8px #35D08B;"></span>
+            <span><strong style="color:#aeb6c8; font-weight:600;">247</strong> projects · scanned 2m ago</span>
+          </div>
+          <div style="flex:1;"></div>
+          <div style="display:flex; align-items:center; gap:8px; width:240px; height:32px; padding:0 12px; border-radius:8px; background:#14171f; border:1px solid rgba(255,255,255,.07); color:#5c6373;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6a7286" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+            <span style="font-size:12.5px;">Search projects…</span>
+            <div style="flex:1;"></div>
+            <span style="font:500 11px 'Geist Mono',monospace; color:#5c6373; background:#1c2029; padding:2px 6px; border-radius:5px;">⌘K</span>
+          </div>
+          <!-- theme toggle (moon active) -->
+          <div style="display:flex; padding:3px; border-radius:8px; background:#14171f; border:1px solid rgba(255,255,255,.07); gap:2px;">
+            <div style="width:28px; height:24px; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#5c6373;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></svg>
+            </div>
+            <div style="width:28px; height:24px; border-radius:6px; display:flex; align-items:center; justify-content:center; background:#2a3350; color:#aebbff;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- body -->
+        <div style="flex:1; min-height:0; display:flex;">
+          <!-- left rail -->
+          <div style="width:236px; flex:none; border-right:1px solid rgba(255,255,255,.06); background:#0c0e13; padding:18px 16px; display:flex; flex-direction:column; gap:22px;">
+            <div>
+              <div style="font:600 10.5px 'Geist',sans-serif; letter-spacing:.13em; color:#5c6373; margin-bottom:2px;">PROJECT TYPES</div><div style="font:400 10.5px 'Geist',sans-serif; color:#565d6e; margin-bottom:11px;">Grouped as clusters on the map</div>
+              <sc-for list="{{ types }}" as="t" hint-placeholder-count="6">
+                <div style="display:flex; align-items:center; gap:10px; padding:5px 0; font-size:12.5px; color:#b3bacb;">
+                  <span style="width:8px; height:8px; border-radius:2px; border:1.5px solid #7c8597;"></span>
+                  <span style="flex:1;">{{ t.label }}</span>
+                  <span style="font:500 11.5px 'Geist Mono',monospace; color:#646c80;">{{ t.count }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div>
+              <div style="font:600 10.5px 'Geist',sans-serif; letter-spacing:.13em; color:#5c6373; margin-bottom:2px;">GIT STATUS</div><div style="font:400 10.5px 'Geist',sans-serif; color:#565d6e; margin-bottom:11px;">Sets each node's color</div>
+              <sc-for list="{{ legend }}" as="g" hint-placeholder-count="5">
+                <div style="display:flex; align-items:center; gap:10px; padding:4.5px 0; font-size:12.5px; color:#9aa3b8;">
+                  <span style="width:8px; height:8px; border-radius:50%; background:{{ g.color }}; box-shadow:0 0 7px {{ g.color }};"></span>
+                  <span>{{ g.label }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="flex:1;"></div>
+            <div style="display:flex; align-items:center; gap:9px; height:34px; border-radius:8px; background:#14171f; border:1px solid rgba(255,255,255,.07); padding:0 12px; font-size:12.5px; color:#aeb6c8; cursor:pointer;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8a92a4" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v4h-4"/></svg>
+              <span>Re-scan</span>
+              <div style="flex:1;"></div>
+              <span style="font:500 11px 'Geist Mono',monospace; color:#5c6373;">~/dev</span>
+            </div>
+          </div>
+
+          <!-- constellation canvas -->
+          <div style="flex:1; position:relative; overflow:hidden; background:radial-gradient(130% 90% at 32% 18%, #161d36 0%, #0a0b10 56%), radial-gradient(90% 90% at 82% 95%, #1d1330 0%, transparent 60%);">
+            <!-- bg stars -->
+            <sc-for list="{{ bgStars }}" as="b" hint-placeholder-count="40">
+              <div style="{{ b.style }}"></div>
+            </sc-for>
+            <!-- edges -->
+            <svg width="1046" height="552" style="position:absolute; inset:0; overflow:visible; pointer-events:none;">
+              <sc-for list="{{ hubEdges }}" as="e" hint-placeholder-count="24">
+                <line x1="{{ e.x1 }}" y1="{{ e.y1 }}" x2="{{ e.x2 }}" y2="{{ e.y2 }}" stroke="{{ e.strokeDark }}" stroke-width="1"></line>
+              </sc-for>
+            </svg>
+            <!-- cluster labels -->
+            <sc-for list="{{ hubLabels }}" as="l" hint-placeholder-count="7">
+              <span style="{{ l.styleDark }}">{{ l.text }}</span>
+            </sc-for>
+            <!-- stars -->
+            <sc-for list="{{ stars }}" as="s" hint-placeholder-count="22">
+              <div style="{{ s.styleDark }}"></div>
+            </sc-for>
+            <!-- selected tooltip card -->
+            <div style="position:absolute; left:560px; top:60px; width:236px; background:rgba(16,19,26,.92); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.1); border-radius:11px; padding:14px; box-shadow:0 18px 40px rgba(0,0,0,.5);">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+                <span style="width:9px; height:9px; border-radius:50%; background:#F5A623; box-shadow:0 0 8px #F5A623;"></span>
+                <span style="font:600 14px 'Geist Mono',monospace; color:#f0f2f7;">tuntun-api</span>
+                <div style="flex:1;"></div>
+                <span style="font:500 10px 'Geist',sans-serif; letter-spacing:.06em; color:#7bd4a8; background:rgba(53,208,139,.12); padding:3px 7px; border-radius:5px;">BACKEND</span>
+              </div>
+              <div style="display:grid; grid-template-columns:auto 1fr; gap:7px 12px; font-size:12px;">
+                <span style="color:#646c80;">Lang</span><span style="color:#c2c9d8; font-family:'Geist Mono',monospace; font-size:11.5px;">Go · Gin</span>
+                <span style="color:#646c80;">Branch</span><span style="font-family:'Geist Mono',monospace; font-size:11.5px;"><span style="color:#F5C451;">main</span> <span style="color:#6E8BFF;">↑2</span> <span style="color:#8b93a7;">↓0</span></span>
+                <span style="color:#646c80;">Status</span><span style="color:#F5A623; font-family:'Geist Mono',monospace; font-size:11.5px;">● 3 uncommitted</span>
+                <span style="color:#646c80;">Path</span><span style="color:#9aa3b8; font-family:'Geist Mono',monospace; font-size:11.5px;">~/dev/tuntun/api</span>
+              </div>
+              <div style="display:flex; gap:7px; margin-top:13px;">
+                <div style="flex:1; height:28px; border-radius:7px; background:#2a3350; color:#cdd6ff; display:flex; align-items:center; justify-content:center; gap:6px; font-size:11.5px; font-weight:500;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17l6-6-6-6M12 19h8"/></svg>Open in shell
+                </div>
+                <div style="width:30px; height:28px; border-radius:7px; background:#14171f; border:1px solid rgba(255,255,255,.08); display:flex; align-items:center; justify-content:center; color:#8a92a4;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2.2"/><circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="8" r="2.2"/><path d="M6 8.2v7.6M6 12c0-3 3-3.5 6-4"/></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- terminal dock -->
+        <div style="height:198px; flex:none; border-top:1px solid rgba(255,255,255,.07); background:#080a0e; display:flex; flex-direction:column;">
+          <div style="height:34px; flex:none; display:flex; align-items:flex-end; gap:2px; padding:0 10px; border-bottom:1px solid rgba(255,255,255,.05);">
+            <div style="display:flex; align-items:center; gap:8px; height:27px; padding:0 13px; border-radius:7px 7px 0 0; background:#0e1117; border:1px solid rgba(255,255,255,.06); border-bottom:none; font:500 12px 'Geist Mono',monospace; color:#d2d8e6;">
+              <span style="width:6px; height:6px; border-radius:50%; background:#35D08B;"></span>tuntun-api — zsh
+            </div>
+            <div style="display:flex; align-items:center; height:27px; padding:0 10px; font:500 12px 'Geist Mono',monospace; color:#5c6373;">ledger-go</div>
+            <div style="display:flex; align-items:center; height:27px; padding:0 9px; color:#5c6373; font-size:15px;">+</div>
+          </div>
+          <div style="flex:1; padding:12px 18px; font:400 13px/1.75 'Geist Mono',monospace; overflow:hidden;">
+            <div><span style="color:#57E0FF;">~</span> <span style="color:#6E8BFF;">❯</span> <span style="color:#e7eaf2;">zeus open tuntun-api</span></div>
+            <div style="color:#646c80;">↳ cd ~/dev/tuntun/api &nbsp;·&nbsp; <span style="color:#7bd4a8;">go 1.22</span> · gin</div>
+            <div><span style="background:#1d2740; color:#9fc0ff; padding:1px 8px; border-radius:4px;">api</span> <span style="color:#F5C451;"> main</span> <span style="color:#6E8BFF;">↑2</span> <span style="color:#F5A623;">●3</span> <span style="color:#6E8BFF;">❯</span> <span style="color:#e7eaf2;">git status -s</span></div>
+            <div><span style="color:#F5A623;"> M</span> <span style="color:#aeb6c8;">internal/handler/auth.go</span></div>
+            <div><span style="color:#8b93a7;">??</span> <span style="color:#aeb6c8;">internal/cache/redis.go</span></div>
+            <div><span style="background:#1d2740; color:#9fc0ff; padding:1px 8px; border-radius:4px;">api</span> <span style="color:#F5C451;"> main</span> <span style="color:#6E8BFF;">↑2</span> <span style="color:#F5A623;">●3</span> <span style="color:#6E8BFF;">❯</span> <span style="display:inline-block; width:8px; height:15px; background:#e7eaf2; vertical-align:-2px; animation:blink 1.1s step-end infinite;"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ FRAME 2 : GIT WORK-TREE CONSTELLATION ============ -->
+    <div style="flex:none;">
+      <div style="font:600 12px 'Geist',sans-serif; color:#8a92a4; letter-spacing:.04em; margin:0 0 14px 4px;">② WORK-TREE CONSTELLATION — tuntun-api</div>
+      <div style="width:1280px; height:800px; background:#0A0B10; border-radius:14px; border:1px solid rgba(255,255,255,.07); box-shadow:0 40px 90px rgba(0,0,0,.55); overflow:hidden; display:flex; flex-direction:column; color:#E7EAF2;">
+
+        <!-- topbar -->
+        <div style="height:54px; flex:none; display:flex; align-items:center; gap:13px; padding:0 16px; border-bottom:1px solid rgba(255,255,255,.06); background:linear-gradient(#0e1016,#0b0c11);">
+          <div style="display:flex; align-items:center; gap:7px; font-size:13px; color:#7c8597;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#F5C451"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>
+            <span style="color:#8a92a4;">ZeusTerm</span>
+            <span style="color:#3f4658;">/</span>
+            <span style="color:#d2d8e6; font-weight:600;">tuntun-api</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; font:500 12px 'Geist Mono',monospace; background:rgba(245,193,81,.1); border:1px solid rgba(245,193,81,.22); color:#F5C451; padding:4px 9px; border-radius:7px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2.2"/><circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="8" r="2.2"/><path d="M6 8.2v7.6M6 12c0-3 3-3.5 6-4"/></svg>
+            develop
+          </div>
+          <div style="flex:1;"></div>
+          <div style="display:flex; gap:8px;">
+            <div style="display:flex; align-items:center; gap:7px; height:30px; padding:0 13px; border-radius:8px; background:#14171f; border:1px solid rgba(255,255,255,.08); font-size:12px; color:#aeb6c8;"><span style="color:#6E8BFF;">↓</span> Pull</div>
+            <div style="display:flex; align-items:center; gap:7px; height:30px; padding:0 13px; border-radius:8px; background:#14171f; border:1px solid rgba(255,255,255,.08); font-size:12px; color:#aeb6c8;"><span style="color:#35D08B;">↑</span> Push <span style="color:#6E8BFF;">4</span></div>
+            <div style="display:flex; align-items:center; gap:7px; height:30px; padding:0 13px; border-radius:8px; background:#2a3350; border:1px solid rgba(110,139,255,.3); font-size:12px; color:#cdd6ff; font-weight:500;">Commit ●3</div>
+          </div>
+        </div>
+
+        <!-- tree canvas -->
+        <div style="flex:1; min-height:0; position:relative; overflow:hidden; background:radial-gradient(120% 100% at 50% 30%, #15182c 0%, #0a0b10 60%);">
+          <sc-for list="{{ bgStars2 }}" as="b" hint-placeholder-count="40">
+            <div style="{{ b.style }}"></div>
+          </sc-for>
+          <svg width="1046" height="500" style="position:absolute; inset:0; overflow:visible; pointer-events:none;">
+            <sc-for list="{{ treeEdges }}" as="e" hint-placeholder-count="16">
+              <line x1="{{ e.x1 }}" y1="{{ e.y1 }}" x2="{{ e.x2 }}" y2="{{ e.y2 }}" stroke="{{ e.stroke }}" stroke-width="2" stroke-linecap="round"></line>
+            </sc-for>
+          </svg>
+          <!-- branch pills -->
+          <sc-for list="{{ treeBranches }}" as="t" hint-placeholder-count="4">
+            <span style="{{ t.style }}">{{ t.text }}</span>
+          </sc-for>
+          <!-- commit stars -->
+          <sc-for list="{{ treeStars }}" as="c" hint-placeholder-count="14">
+            <div style="{{ c.styleDark }}"></div>
+          </sc-for>
+          <!-- commit hashes -->
+          <sc-for list="{{ treeStars }}" as="c" hint-placeholder-count="14">
+            <span style="{{ c.hashStyle }}">{{ c.h }}</span>
+          </sc-for>
+          <!-- latest → oldest axis -->
+          <div style="position:absolute; left:44px; top:58px; font:600 10px 'Geist',sans-serif; letter-spacing:.14em; color:#9aa3b8;">LATEST</div>
+          <div style="position:absolute; left:71px; top:80px; width:1px; height:404px; background:linear-gradient(#8a92a4aa,#8a92a422);"></div>
+          <div style="position:absolute; left:65px; top:474px; color:#5c6373; font-size:11px; line-height:0;">▼</div>
+          <div style="position:absolute; left:46px; top:492px; font:600 10px 'Geist',sans-serif; letter-spacing:.14em; color:#5c6373;">OLDEST</div>
+          <!-- HEAD callout -->
+          <div style="position:absolute; left:724px; top:40px; background:rgba(16,19,26,.94); border:1px solid rgba(110,139,255,.35); border-radius:10px; padding:11px 13px; box-shadow:0 16px 36px rgba(0,0,0,.5); width:210px;">
+            <div style="display:flex; align-items:center; gap:7px; margin-bottom:7px;">
+              <span style="font:600 10px 'Geist',sans-serif; letter-spacing:.08em; color:#aebbff; background:rgba(110,139,255,.16); padding:2px 7px; border-radius:5px;">HEAD → develop</span>
+            </div>
+            <div style="font:500 12.5px 'Geist Mono',monospace; color:#e7eaf2; margin-bottom:4px;">session refactor</div>
+            <div style="font:400 11px 'Geist Mono',monospace; color:#646c80;">12ab9c · Maya · 1h ago</div>
+          </div>
+        </div>
+
+        <!-- terminal: git log graph -->
+        <div style="height:228px; flex:none; border-top:1px solid rgba(255,255,255,.07); background:#080a0e; display:flex; flex-direction:column;">
+          <div style="height:34px; flex:none; display:flex; align-items:flex-end; gap:2px; padding:0 10px; border-bottom:1px solid rgba(255,255,255,.05);">
+            <div style="display:flex; align-items:center; gap:8px; height:27px; padding:0 13px; border-radius:7px 7px 0 0; background:#0e1117; border:1px solid rgba(255,255,255,.06); border-bottom:none; font:500 12px 'Geist Mono',monospace; color:#d2d8e6;">
+              <span style="width:6px; height:6px; border-radius:50%; background:#F5C451;"></span>git
+            </div>
+          </div>
+          <div style="flex:1; padding:11px 18px; font:400 12.5px/1.7 'Geist Mono',monospace; overflow:hidden;">
+            <div><span style="color:#F5C451;">develop</span> <span style="color:#6E8BFF;">❯</span> <span style="color:#e7eaf2;">git log --oneline --graph</span></div>
+            <div><span style="color:#6E8BFF;">*</span> <span style="color:#F5C451;">12ab9c</span> <span style="color:#aebbff;">(HEAD -&gt; develop)</span> <span style="color:#c2c9d8;">session refactor</span></div>
+            <div><span style="color:#6E8BFF;">*</span>&nbsp;&nbsp; <span style="color:#B98BFF;">aa55fe</span> <span style="color:#c2c9d8;">merge feature/auth</span></div>
+            <div><span style="color:#6E8BFF;">|</span><span style="color:#B98BFF;">\</span></div>
+            <div><span style="color:#6E8BFF;">|</span> <span style="color:#B98BFF;">*</span> <span style="color:#B98BFF;">90ab33</span> <span style="color:#c2c9d8;">token rotation</span></div>
+            <div><span style="color:#6E8BFF;">|</span> <span style="color:#B98BFF;">*</span> <span style="color:#B98BFF;">77de10</span> <span style="color:#c2c9d8;">oauth pkce</span></div>
+            <div><span style="color:#6E8BFF;">*</span> <span style="color:#B98BFF;">|</span> <span style="color:#6E8BFF;">81c3e0</span> <span style="color:#c2c9d8;">api v2 routes</span></div>
+            <div><span style="color:#6E8BFF;">|</span><span style="color:#B98BFF;">/</span></div>
+            <div><span style="color:#6E8BFF;">*</span> <span style="color:#6E8BFF;">2b9f44</span> <span style="color:#c2c9d8;">feature flags</span></div>
+            <div><span style="color:#F5C451;">develop</span> <span style="color:#6E8BFF;">❯</span> <span style="display:inline-block; width:8px; height:14px; background:#e7eaf2; vertical-align:-2px; animation:blink 1.1s step-end infinite;"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ FRAME 3 : LIGHT MODE HUB ============ -->
+    <div style="flex:none;">
+      <div style="font:600 12px 'Geist',sans-serif; color:#8a92a4; letter-spacing:.04em; margin:0 0 14px 4px;">③ CONSTELLATION HUB — LIGHT</div>
+      <div style="width:1280px; height:800px; background:#F6F7FB; border-radius:14px; border:1px solid #e4e7ee; box-shadow:0 40px 90px rgba(0,0,0,.45); overflow:hidden; display:flex; flex-direction:column; color:#1a1d24;">
+
+        <!-- topbar -->
+        <div style="height:54px; flex:none; display:flex; align-items:center; gap:14px; padding:0 16px; border-bottom:1px solid #e9ebf1; background:#ffffff;">
+          <div style="display:flex; align-items:center; gap:9px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#E0A21A"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>
+            <span style="font-weight:700; font-size:15px; letter-spacing:-.01em; color:#1a1d24;">ZeusTerm</span>
+          </div>
+          <div style="width:1px; height:18px; background:#e4e7ee;"></div>
+          <div style="display:flex; align-items:center; gap:7px; font-size:12.5px; color:#6b7280;">
+            <span style="width:7px; height:7px; border-radius:50%; background:#1FA971;"></span>
+            <span><strong style="color:#374151; font-weight:600;">247</strong> projects · scanned 2m ago</span>
+          </div>
+          <div style="flex:1;"></div>
+          <div style="display:flex; align-items:center; gap:8px; width:240px; height:32px; padding:0 12px; border-radius:8px; background:#f1f3f7; border:1px solid #e4e7ee; color:#9aa1ad;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9aa1ad" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+            <span style="font-size:12.5px;">Search projects…</span>
+            <div style="flex:1;"></div>
+            <span style="font:500 11px 'Geist Mono',monospace; color:#9aa1ad; background:#e7eaf0; padding:2px 6px; border-radius:5px;">⌘K</span>
+          </div>
+          <!-- theme toggle (sun active) -->
+          <div style="display:flex; padding:3px; border-radius:8px; background:#f1f3f7; border:1px solid #e4e7ee; gap:2px;">
+            <div style="width:28px; height:24px; border-radius:6px; display:flex; align-items:center; justify-content:center; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.1); color:#E0A21A;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></svg>
+            </div>
+            <div style="width:28px; height:24px; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#9aa1ad;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- body -->
+        <div style="flex:1; min-height:0; display:flex;">
+          <div style="width:236px; flex:none; border-right:1px solid #e9ebf1; background:#ffffff; padding:18px 16px; display:flex; flex-direction:column; gap:22px;">
+            <div>
+              <div style="font:600 10.5px 'Geist',sans-serif; letter-spacing:.13em; color:#9aa1ad; margin-bottom:2px;">PROJECT TYPES</div><div style="font:400 10.5px 'Geist',sans-serif; color:#aab0bb; margin-bottom:11px;">Grouped as clusters on the map</div>
+              <sc-for list="{{ types }}" as="t" hint-placeholder-count="6">
+                <div style="display:flex; align-items:center; gap:10px; padding:5px 0; font-size:12.5px; color:#374151;">
+                  <span style="width:8px; height:8px; border-radius:2px; border:1.5px solid #7c8597;"></span>
+                  <span style="flex:1;">{{ t.label }}</span>
+                  <span style="font:500 11.5px 'Geist Mono',monospace; color:#9aa1ad;">{{ t.count }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div>
+              <div style="font:600 10.5px 'Geist',sans-serif; letter-spacing:.13em; color:#9aa1ad; margin-bottom:2px;">GIT STATUS</div><div style="font:400 10.5px 'Geist',sans-serif; color:#aab0bb; margin-bottom:11px;">Sets each node's color</div>
+              <sc-for list="{{ legendLight }}" as="g" hint-placeholder-count="5">
+                <div style="display:flex; align-items:center; gap:10px; padding:4.5px 0; font-size:12.5px; color:#4b5563;">
+                  <span style="width:8px; height:8px; border-radius:50%; background:{{ g.color }};"></span>
+                  <span>{{ g.label }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="flex:1;"></div>
+            <div style="display:flex; align-items:center; gap:9px; height:34px; border-radius:8px; background:#f1f3f7; border:1px solid #e4e7ee; padding:0 12px; font-size:12.5px; color:#374151;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9aa1ad" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v4h-4"/></svg>
+              <span>Re-scan</span>
+              <div style="flex:1;"></div>
+              <span style="font:500 11px 'Geist Mono',monospace; color:#9aa1ad;">~/dev</span>
+            </div>
+          </div>
+
+          <div style="flex:1; position:relative; overflow:hidden; background:radial-gradient(130% 90% at 32% 18%, #eef1ff 0%, #f6f7fb 58%), radial-gradient(90% 90% at 82% 95%, #f3edff 0%, transparent 60%);">
+            <svg width="1046" height="552" style="position:absolute; inset:0; overflow:visible; pointer-events:none;">
+              <sc-for list="{{ hubEdges }}" as="e" hint-placeholder-count="24">
+                <line x1="{{ e.x1 }}" y1="{{ e.y1 }}" x2="{{ e.x2 }}" y2="{{ e.y2 }}" stroke="{{ e.strokeLight }}" stroke-width="1"></line>
+              </sc-for>
+            </svg>
+            <sc-for list="{{ hubLabels }}" as="l" hint-placeholder-count="7">
+              <span style="{{ l.styleLight }}">{{ l.text }}</span>
+            </sc-for>
+            <sc-for list="{{ stars }}" as="s" hint-placeholder-count="22">
+              <div style="{{ s.styleLight }}"></div>
+            </sc-for>
+          </div>
+        </div>
+
+        <!-- terminal dock (light) -->
+        <div style="height:198px; flex:none; border-top:1px solid #e9ebf1; background:#fbfcfe; display:flex; flex-direction:column;">
+          <div style="height:34px; flex:none; display:flex; align-items:flex-end; gap:2px; padding:0 10px; border-bottom:1px solid #eef0f4;">
+            <div style="display:flex; align-items:center; gap:8px; height:27px; padding:0 13px; border-radius:7px 7px 0 0; background:#fff; border:1px solid #e9ebf1; border-bottom:none; font:500 12px 'Geist Mono',monospace; color:#374151;">
+              <span style="width:6px; height:6px; border-radius:50%; background:#1FA971;"></span>tuntun-api — zsh
+            </div>
+          </div>
+          <div style="flex:1; padding:12px 18px; font:400 13px/1.75 'Geist Mono',monospace; overflow:hidden;">
+            <div><span style="color:#0E8FB0;">~</span> <span style="color:#3457C5;">❯</span> <span style="color:#1a1d24;">zeus open tuntun-api</span></div>
+            <div style="color:#9aa1ad;">↳ cd ~/dev/tuntun/api &nbsp;·&nbsp; <span style="color:#1FA971;">go 1.22</span> · gin</div>
+            <div><span style="background:#e4ebff; color:#3457C5; padding:1px 8px; border-radius:4px;">api</span> <span style="color:#C08A12;"> main</span> <span style="color:#3457C5;">↑2</span> <span style="color:#D6841A;">●3</span> <span style="color:#3457C5;">❯</span> <span style="color:#1a1d24;">git status -s</span></div>
+            <div><span style="color:#D6841A;"> M</span> <span style="color:#4b5563;">internal/handler/auth.go</span></div>
+            <div><span style="color:#9aa1ad;">??</span> <span style="color:#4b5563;">internal/cache/redis.go</span></div>
+            <div><span style="background:#e4ebff; color:#3457C5; padding:1px 8px; border-radius:4px;">api</span> <span style="color:#C08A12;"> main</span> <span style="color:#3457C5;">↑2</span> <span style="color:#D6841A;">●3</span> <span style="color:#3457C5;">❯</span> <span style="display:inline-block; width:8px; height:15px; background:#1a1d24; vertical-align:-2px; animation:blink 1.1s step-end infinite;"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ FRAME 4 : WORKTREE ORBITS ============ -->
+    <div style="flex:none;">
+      <div style="font:600 12px 'Geist',sans-serif; color:#8a92a4; letter-spacing:.04em; margin:0 0 14px 4px;">④ WORKTREE ORBITS — tuntun-api · 10 linked checkouts</div>
+      <div style="width:1280px; height:800px; background:#0A0B10; border-radius:14px; border:1px solid rgba(255,255,255,.07); box-shadow:0 40px 90px rgba(0,0,0,.55); overflow:hidden; display:flex; flex-direction:column; color:#E7EAF2;">
+        <div style="height:54px; flex:none; display:flex; align-items:center; gap:13px; padding:0 16px; border-bottom:1px solid rgba(255,255,255,.06); background:linear-gradient(#0e1016,#0b0c11);">
+          <div style="display:flex; align-items:center; gap:7px; font-size:13px; color:#7c8597;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#F5C451"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>
+            <span style="color:#8a92a4;">ZeusTerm</span><span style="color:#3f4658;">/</span>
+            <span style="color:#d2d8e6; font-weight:600;">tuntun-api</span><span style="color:#3f4658;">/</span>
+            <span style="color:#8a92a4;">worktrees</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; font:500 12px 'Geist Mono',monospace; background:rgba(87,224,255,.1); border:1px solid rgba(87,224,255,.22); color:#57E0FF; padding:4px 9px; border-radius:7px;">10 linked</div>
+          <div style="flex:1;"></div>
+          <div style="display:flex; align-items:center; gap:7px; height:30px; padding:0 13px; border-radius:8px; background:#2a3350; border:1px solid rgba(110,139,255,.3); font-size:12px; color:#cdd6ff; font-weight:500;"><span style="font-size:15px; line-height:0;">+</span> New worktree</div>
+        </div>
+        <div style="flex:1; min-height:0; position:relative; overflow:hidden; background:radial-gradient(110% 100% at 50% 40%, #181c30 0%, #0a0b10 62%);">
+          <sc-for list="{{ bgStars2 }}" as="b" hint-placeholder-count="40"><div style="{{ b.style }}"></div></sc-for>
+          <svg width="1280" height="520" style="position:absolute; inset:0; overflow:visible; pointer-events:none;">
+            <sc-for list="{{ orbits }}" as="o" hint-placeholder-count="3">
+              <ellipse cx="{{ o.cx }}" cy="{{ o.cy }}" rx="{{ o.rx }}" ry="{{ o.ry }}" fill="none" stroke="rgba(150,170,255,.13)" stroke-width="1" stroke-dasharray="2 6"></ellipse>
+            </sc-for>
+          </svg>
+          <sc-for list="{{ worktrees }}" as="w" hint-placeholder-count="10"><div style="{{ w.style }}"></div></sc-for>
+          <sc-for list="{{ worktrees }}" as="w" hint-placeholder-count="10"><span style="{{ w.labelStyle }}">{{ w.branch }}</span></sc-for>
+          <div style="{{ wtMain.style }}"></div>
+          <span style="{{ wtMain.labelStyle }}">{{ wtMain.label }}</span>
+          <div style="position:absolute; left:22px; top:18px; max-width:228px;">
+            <div style="font:600 13px 'Geist',sans-serif; color:#d2d8e6; margin-bottom:4px;">One repo, ten checkouts</div>
+            <div style="font:400 11.5px/1.5 'Geist',sans-serif; color:#646c80;">Each linked worktree is its own working directory on its own branch — switch without stashing. Node color = git status.</div>
+          </div>
+        </div>
+        <div style="height:236px; flex:none; border-top:1px solid rgba(255,255,255,.07); background:#080a0e; display:flex; flex-direction:column;">
+          <div style="height:34px; flex:none; display:flex; align-items:flex-end; gap:2px; padding:0 10px; border-bottom:1px solid rgba(255,255,255,.05);">
+            <div style="display:flex; align-items:center; gap:8px; height:27px; padding:0 13px; border-radius:7px 7px 0 0; background:#0e1117; border:1px solid rgba(255,255,255,.06); border-bottom:none; font:500 12px 'Geist Mono',monospace; color:#d2d8e6;"><span style="width:6px; height:6px; border-radius:50%; background:#57E0FF;"></span>worktrees</div>
+          </div>
+          <div style="flex:1; padding:11px 18px; font:400 12.5px/1.62 'Geist Mono',monospace; overflow:hidden; white-space:pre;">
+            <div><span style="color:#F5C451;">api</span> <span style="color:#6E8BFF;">❯</span> <span style="color:#e7eaf2;">git worktree list</span></div>
+            <div><span style="color:#7c8597;">~/dev/tuntun/api        </span><span style="color:#9aa3b8;">12ab9c</span> <span style="color:#F5C451;">[develop]</span></div>
+            <div><span style="color:#7c8597;">~/dev/tuntun/api-hotfix </span><span style="color:#9aa3b8;">5fa0cd</span> <span style="color:#aebbff;">[hotfix/payment-retry]</span> <span style="color:#F5A623;">●</span></div>
+            <div><span style="color:#7c8597;">~/dev/tuntun/api-perf   </span><span style="color:#9aa3b8;">aa55fe</span> <span style="color:#aebbff;">[perf/db-pool]</span> <span style="color:#6E8BFF;">↑3</span></div>
+            <div><span style="color:#7c8597;">~/dev/tuntun/api-spike  </span><span style="color:#9aa3b8;">77de10</span> <span style="color:#aebbff;">[spike/grpc]</span> <span style="color:#8b93a7;">??</span></div>
+            <div><span style="color:#F5C451;">api</span> <span style="color:#6E8BFF;">❯</span> <span style="color:#e7eaf2;">git worktree add ../api-webhooks feature/webhooks</span></div>
+            <div><span style="color:#646c80;">Preparing worktree (new branch 'feature/webhooks')</span></div>
+            <div><span style="color:#F5C451;">api</span> <span style="color:#6E8BFF;">❯</span> <span style="display:inline-block; width:8px; height:14px; background:#e7eaf2; vertical-align:-2px; animation:blink 1.1s step-end infinite;"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const rng = (seed) => { let t = seed >>> 0; return () => { t += 0x6D2B79F5; let x = Math.imul(t ^ (t >>> 15), 1 | t); x ^= x + Math.imul(x ^ (x >>> 7), 61 | x); return ((x ^ (x >>> 14)) >>> 0) / 4294967296; }; };
+
+    const SC = { clean:'#35D08B', dirty:'#F5A623', ahead:'#6E8BFF', behind:'#FF6B6B', untracked:'#8B93A7' };
+    const SCL = { clean:'#1FA971', dirty:'#D6841A', ahead:'#3457C5', behind:'#E0524F', untracked:'#9aa1ad' };
+
+    const clusters = [
+      { type:'Frontend', cx:225, cy:155, spread:74, color:'#57E0FF', names:['tuntun-web','checkout-ui','design-system','admin-portal','marketing-site'], langs:['TS · React','TS · Next.js','TS · Vue','TS · React','Astro'], stat:['ahead','dirty','clean','clean','behind'] },
+      { type:'Backend', cx:520, cy:130, spread:84, color:'#35D08B', names:['tuntun-api','payments-svc','auth-gateway','ledger-go','notif-worker'], langs:['Go · Gin','Rust · Axum','Go · Echo','Go','Node · Fastify'], stat:['dirty','clean','ahead','clean','untracked'] },
+      { type:'iOS', cx:800, cy:170, spread:58, color:'#B98BFF', names:['Tuntun-iOS','WalletKit','ScanSDK'], langs:['Swift · SwiftUI','Swift','Swift · UIKit'], stat:['clean','dirty','clean'] },
+      { type:'macOS', cx:885, cy:360, spread:54, color:'#F5C451', names:['ZeusTerm','MenuBarX','ColorPick'], langs:['Swift · AppKit','Swift','Swift'] , stat:['dirty','clean','ahead'] },
+      { type:'Mobile', cx:625, cy:420, spread:60, color:'#FF8FB1', names:['tuntun-flutter','driver-rn','kiosk-app'], langs:['Dart · Flutter','TS · RN','Dart'], stat:['behind','clean','dirty'] },
+      { type:'Scripts', cx:235, cy:400, spread:66, color:'#9aa3b8', names:['dotfiles','deploy-kit','db-migrate','backups'], langs:['zsh','Python','Bash','Bash'], stat:['clean','clean','untracked','clean'] }
+    ];
+    const hub = { x:548, y:280 };
+    const r = rng(1337);
+    const stars = [];
+    const hubLabels = [];
+    const hubEdges = [];
+
+    const branchFor = (s) => s==='ahead' ? 'main ↑2' : s==='dirty' ? 'main ●3' : s==='behind' ? 'main ↓1' : 'main';
+
+    // central monorepo hub star
+    const mono = { x:hub.x, y:hub.y, size:16, status:'clean', color:SC.clean, colorL:SCL.clean, hub:true, name:'tuntun-mono' };
+    stars.push(mono);
+    hubLabels.push(mkLabel(hub.x, hub.y - 28, 'tuntun-mono', '#F5C451', '#C08A12', 12, true, true));
+
+    clusters.forEach((c, ci) => {
+      hubLabels.push(mkLabel(c.cx, c.cy - c.spread - 12, c.type, '#cfd5e6', '#5b6478', 12.5, false, true));
+      const nodes = [];
+      const n = c.names.length;
+      for (let i = 0; i < n; i++) {
+        const ang = (i / n) * Math.PI * 2 + (r() - 0.5) * 0.9 + ci * 1.7;
+        const rad = c.spread * (0.42 + r() * 0.62);
+        const x = c.cx + Math.cos(ang) * rad;
+        const y = c.cy + Math.sin(ang) * rad * 0.82;
+        const status = c.stat[i] || 'clean';
+        const size = 6 + (i % 2 ? 2.5 : 0) + (i === 0 ? 3 : 0);
+        const ring = (c.type === 'Backend' && i === 0);
+        const st = { x, y, size, status, color:SC[status], colorL:SCL[status], ring, name:c.names[i], lang:c.langs[i], branch:branchFor(status), path:'~/dev/'+c.names[i].toLowerCase() };
+        nodes.push(st); stars.push(st);
+      }
+      for (let i = 0; i < nodes.length - 1; i++) hubEdges.push(mkEdge(nodes[i].x, nodes[i].y, nodes[i+1].x, nodes[i+1].y, false));
+      hubEdges.push(mkEdge(nodes[0].x, nodes[0].y, hub.x, hub.y, true));
+    });
+
+    // star style strings
+    stars.forEach(s => {
+      const m = -s.size / 2;
+      const base = `position:absolute; left:${s.x.toFixed(1)}px; top:${s.y.toFixed(1)}px; width:${s.size}px; height:${s.size}px; margin:${m}px 0 0 ${m}px; border-radius:50%; animation:twinkle ${(2.6 + (s.size % 3) * 0.7).toFixed(1)}s ease-in-out infinite; animation-delay:${((s.x % 9) * 0.13).toFixed(2)}s;`;
+      s.styleDark = base + `background:${s.color}; box-shadow:0 0 ${(s.size*2).toFixed(0)}px ${(s.size*0.6).toFixed(0)}px ${s.color}66, 0 0 4px 1px ${s.color};`
+        + (s.hub ? `border:1.5px solid rgba(255,255,255,.55);` : '')
+        + (s.ring ? `box-shadow:0 0 ${(s.size*3).toFixed(0)}px ${s.size}px ${s.color}99, 0 0 0 5px ${s.color}22;` : '');
+      s.styleLight = base + `background:${s.colorL}; box-shadow:0 0 ${(s.size*1.5).toFixed(0)}px ${(s.size*0.35).toFixed(0)}px ${s.colorL}55; border:1px solid ${s.colorL};`
+        + (s.hub ? `box-shadow:0 0 12px 4px ${s.colorL}66; border:1.5px solid ${s.colorL};` : '')
+        + (s.ring ? `box-shadow:0 0 ${(s.size*2.4).toFixed(0)}px ${s.size}px ${s.colorL}55, 0 0 0 4px ${s.colorL}22;` : '');
+    });
+
+    function mkLabel(x, y, text, colorD, colorL, size, mono, cap) {
+      const f = (col) => `position:absolute; left:${x}px; top:${y}px; transform:translate(-50%,-50%); font:${cap?'600':'500'} ${size}px ${mono?"'Geist Mono',monospace":"'Geist',sans-serif"}; color:${col}; letter-spacing:${cap?'.14em':'0'}; text-transform:${cap?'uppercase':'none'}; white-space:nowrap; pointer-events:none;`;
+      return { text, styleDark:f(colorD), styleLight:f(colorL) };
+    }
+    function mkEdge(x1, y1, x2, y2, dim) {
+      return { x1:x1.toFixed(1), y1:y1.toFixed(1), x2:x2.toFixed(1), y2:y2.toFixed(1),
+        strokeDark: dim ? 'rgba(150,170,255,.06)' : 'rgba(150,170,255,.15)',
+        strokeLight: dim ? 'rgba(70,90,180,.10)' : 'rgba(70,90,180,.2)' };
+    }
+
+    // background stars
+    const mkBg = (seed) => {
+      const rb = rng(seed); const arr = [];
+      for (let i = 0; i < 64; i++) {
+        const x = rb() * 1046, y = rb() * 540, s = (rb() * 1.6 + 0.5);
+        arr.push({ style:`position:absolute; left:${x.toFixed(0)}px; top:${y.toFixed(0)}px; width:${s.toFixed(1)}px; height:${s.toFixed(1)}px; border-radius:50%; background:#cdd6ff; opacity:${(rb()*0.45+0.12).toFixed(2)}; animation:twinkle ${(rb()*3+2).toFixed(1)}s ease-in-out infinite; animation-delay:${(rb()*3).toFixed(1)}s;` });
+      }
+      return arr;
+    };
+
+    // ---------- git work-tree (frame 2) ----------
+    const TC = { main:'#F5C451', develop:'#6E8BFF', auth:'#B98BFF', cache:'#57E0FF' };
+    // vertical: newest at top → oldest at bottom. lanes = columns.
+    const commits = [
+      { x:540, y:75,  b:'develop', h:'12ab9c', head:true },
+      { x:540, y:150, b:'develop', h:'aa55fe' },
+      { x:540, y:234, b:'develop', h:'81c3e0' },
+      { x:540, y:318, b:'develop', h:'2b9f44' },
+      { x:690, y:150, b:'auth',    h:'90ab33' },
+      { x:690, y:234, b:'auth',    h:'77de10' },
+      { x:380, y:108, b:'main',    h:'5fa0cd' },
+      { x:380, y:315, b:'main',    h:'9f12bb' },
+      { x:380, y:388, b:'main',    h:'c0d4aa' },
+      { x:380, y:446, b:'main',    h:'7b2e10' },
+      { x:380, y:498, b:'main',    h:'a1f3c9' },
+      { x:250, y:234, b:'cache',   h:'cc09aa' },
+      { x:250, y:318, b:'cache',   h:'5512ee' }
+    ];
+    const treeStars = commits.map(c => {
+      const color = TC[c.b]; const size = c.head ? 14 : 8.5; const m = -size / 2;
+      const styleDark = `position:absolute; left:${c.x}px; top:${c.y}px; width:${size}px; height:${size}px; margin:${m}px 0 0 ${m}px; border-radius:50%; background:${color}; box-shadow:0 0 ${(size*2).toFixed(0)}px ${(size*0.7).toFixed(0)}px ${color}66, 0 0 4px 1px ${color};`
+        + (c.head ? ` border:2px solid #fff; box-shadow:0 0 ${(size*2.6).toFixed(0)}px ${size}px ${color}aa, 0 0 0 6px ${color}22;` : '');
+      const hashStyle = `position:absolute; left:${c.x}px; top:${c.y + size/2 + 9}px; transform:translateX(-50%); font:400 9.5px 'Geist Mono',monospace; color:${c.head?'#cdd6ff':'rgba(180,190,215,.55)'}; white-space:nowrap; pointer-events:none;`;
+      return { ...c, color, styleDark, hashStyle };
+    });
+    const E = (x1,y1,x2,y2,b) => ({ x1, y1, x2, y2, stroke: TC[b] + 'cc' });
+    const treeEdges = [
+      // develop trunk (top → down)
+      E(540,75,540,150,'develop'), E(540,150,540,234,'develop'), E(540,234,540,318,'develop'),
+      // merge feature/auth into develop, and auth lane
+      E(540,150,690,150,'auth'), E(690,150,690,234,'auth'), E(690,234,540,234,'auth'),
+      // develop branched from main
+      E(540,318,380,315,'develop'),
+      // main trunk (top → down)
+      E(380,108,380,315,'main'), E(380,315,380,388,'main'), E(380,388,380,446,'main'), E(380,446,380,498,'main'),
+      // fix/cache: merge into main, lane, branch point
+      E(380,315,250,234,'cache'), E(250,234,250,318,'cache'), E(250,318,380,388,'cache')
+    ];
+    const mkBranch = (x, y, text, color) => ({ text, style:`position:absolute; left:${x}px; top:${y}px; transform:translateY(-50%); font:500 11.5px 'Geist Mono',monospace; color:${color}; background:${color}1f; border:1px solid ${color}44; padding:3px 9px; border-radius:6px; white-space:nowrap;` });
+    const treeBranches = [
+      mkBranch(300, 82, 'main', TC.main),
+      mkBranch(430, 46, 'develop', TC.develop),
+      mkBranch(620, 120, 'feature/auth', TC.auth),
+      mkBranch(120, 210, 'fix/cache', TC.cache)
+    ];
+
+    // ---------- worktrees orbiting one repo (frame 4) ----------
+    const wcx = 640, wcy = 252, sq = 0.72, mSize = 17;
+    const wtMain = { label:'api · develop · HEAD',
+      style:`position:absolute; left:${wcx}px; top:${wcy}px; width:${mSize}px; height:${mSize}px; margin:${-mSize/2}px 0 0 ${-mSize/2}px; border-radius:50%; background:#F5C451; border:2px solid #fff; box-shadow:0 0 34px 12px #F5C45199, 0 0 0 6px #F5C45122;`,
+      labelStyle:`position:absolute; left:${wcx}px; top:${wcy + 20}px; transform:translateX(-50%); font:600 12px 'Geist Mono',monospace; color:#F5C451; white-space:nowrap; pointer-events:none;` };
+    const wtData = [
+      {b:'hotfix/payment-retry', s:'dirty'}, {b:'review/pr-482', s:'clean'}, {b:'perf/db-pool', s:'ahead'},
+      {b:'feature/oauth-pkce', s:'dirty'}, {b:'release/1.4', s:'clean'}, {b:'fix/cache-ttl', s:'behind'},
+      {b:'chore/go-1.22', s:'clean'}, {b:'spike/grpc', s:'untracked'}, {b:'docs/api-v2', s:'clean'}, {b:'feature/webhooks', s:'ahead'}
+    ];
+    const rings = [{ r:118, n:3, off:0.4 }, { r:184, n:4, off:0.85 }, { r:246, n:3, off:0.15 }];
+    const orbits = rings.map(rg => ({ cx:wcx, cy:wcy, rx:rg.r, ry:(rg.r * sq).toFixed(1) }));
+    const worktrees = []; let wi = 0;
+    rings.forEach(rg => {
+      for (let i = 0; i < rg.n; i++) {
+        const ang = rg.off + (i / rg.n) * Math.PI * 2;
+        const x = wcx + Math.cos(ang) * rg.r;
+        const y = wcy + Math.sin(ang) * rg.r * sq;
+        const wt = wtData[wi++]; const color = SC[wt.s]; const size = 9;
+        const ux = Math.cos(ang), uy = Math.sin(ang) * sq; const ul = Math.hypot(ux, uy) || 1;
+        const lx = x + ux / ul * 15, ly = y + uy / ul * 15; const right = ux >= 0;
+        worktrees.push({ branch: wt.b, status: wt.s, color,
+          style:`position:absolute; left:${x.toFixed(1)}px; top:${y.toFixed(1)}px; width:${size}px; height:${size}px; margin:${-size/2}px 0 0 ${-size/2}px; border-radius:50%; background:${color}; box-shadow:0 0 ${size*2}px ${(size*0.6).toFixed(0)}px ${color}66, 0 0 4px 1px ${color}; animation:twinkle ${(2.6 + i * 0.4).toFixed(1)}s ease-in-out infinite;`,
+          labelStyle:`position:absolute; left:${lx.toFixed(1)}px; top:${ly.toFixed(1)}px; transform:translate(${right?'0':'-100%'},-50%); font:500 10.5px 'Geist Mono',monospace; color:#aeb6c8; white-space:nowrap; pointer-events:none; padding-${right?'left':'right'}:6px;` });
+      }
+    });
+
+    return {
+      stars, hubLabels, hubEdges, worktrees, orbits, wtMain,
+      bgStars: mkBg(99), bgStars2: mkBg(202),
+      treeStars, treeEdges, treeBranches,
+      types: [
+        { label:'Frontend', count:48, color:'#57E0FF' },
+        { label:'Backend', count:62, color:'#35D08B' },
+        { label:'iOS', count:19, color:'#B98BFF' },
+        { label:'macOS / Swift', count:14, color:'#F5C451' },
+        { label:'Mobile', count:11, color:'#FF8FB1' },
+        { label:'Scripts & CLI', count:93, color:'#9aa3b8' }
+      ],
+      legend: [
+        { label:'Clean', color:SC.clean }, { label:'Modified', color:SC.dirty },
+        { label:'Ahead of remote', color:SC.ahead }, { label:'Behind remote', color:SC.behind },
+        { label:'Untracked', color:SC.untracked }
+      ],
+      legendLight: [
+        { label:'Clean', color:SCL.clean }, { label:'Modified', color:SCL.dirty },
+        { label:'Ahead of remote', color:SCL.ahead }, { label:'Behind remote', color:SCL.behind },
+        { label:'Untracked', color:SCL.untracked }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

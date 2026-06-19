@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;}
+  body{margin:0;}
+  @keyframes twinkle{0%,100%{opacity:.55;}50%{opacity:1;}}
+  @keyframes blink{0%,49%{opacity:1;}50%,100%{opacity:0;}}
+  @keyframes hintpulse{0%,100%{opacity:.5;}50%{opacity:1;}}
+</style>
+</helmet>
+
+<div style="height:100vh; width:100vw; background:#0A0B10; display:flex; flex-direction:column; font-family:'Geist',-apple-system,sans-serif; color:#E7EAF2; overflow:hidden;">
+
+  <!-- topbar -->
+  <div style="height:54px; flex:none; display:flex; align-items:center; gap:13px; padding:0 16px; border-bottom:1px solid rgba(255,255,255,.06); background:linear-gradient(#0e1016,#0b0c11);">
+    <div style="display:flex; align-items:center; gap:9px; margin-right:4px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="#F5C451"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>
+      <span style="font-weight:700; font-size:15px; letter-spacing:-.01em;">ZeusTerm</span>
+    </div>
+    <div style="width:1px; height:18px; background:rgba(255,255,255,.1);"></div>
+    <!-- breadcrumb -->
+    <div style="display:flex; align-items:center;">
+      <sc-for list="{{ crumbs }}" as="cr" hint-placeholder-count="1">
+        <span style="display:inline-flex; align-items:center;">
+          <sc-if value="{{ cr.sep }}" hint-placeholder-val="{{ false }}"><span style="color:#3f4658; margin:0 8px; font-size:13px;">/</span></sc-if>
+          <span onClick="{{ cr.onClick }}" style="{{ cr.style }}">{{ cr.label }}</span>
+        </span>
+      </sc-for>
+    </div>
+    <div style="flex:1;"></div>
+    <sc-if value="{{ detached }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; align-items:center; gap:6px; font:500 11.5px 'Geist Mono',monospace; background:rgba(245,166,35,.12); border:1px solid rgba(245,166,35,.3); color:#F5A623; padding:4px 9px; border-radius:7px;">detached HEAD @{{ head }}</div>
+    </sc-if>
+    <div style="display:flex; padding:3px; border-radius:8px; background:#14171f; border:1px solid rgba(255,255,255,.07); gap:2px;">
+      <div style="width:28px; height:24px; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#5c6373;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></svg>
+      </div>
+      <div style="width:28px; height:24px; border-radius:6px; display:flex; align-items:center; justify-content:center; background:#2a3350; color:#aebbff;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- body -->
+  <div style="flex:1; min-height:0; display:flex;">
+    <!-- left rail -->
+    <div style="width:236px; flex:none; border-right:1px solid rgba(255,255,255,.06); background:#0c0e13; padding:18px 16px; display:flex; flex-direction:column; gap:20px;">
+      <div>
+        <div style="font:600 15px 'Geist',sans-serif; color:#e7eaf2; margin-bottom:2px;">{{ railTitle }}</div>
+        <div style="font:400 12px 'Geist',sans-serif; color:#646c80;">{{ railSub }}</div>
+      </div>
+      <sc-if value="{{ isHub }}" hint-placeholder-val="{{ true }}">
+        <div>
+          <div style="font:600 10.5px 'Geist',sans-serif; letter-spacing:.13em; color:#5c6373; margin-bottom:2px;">PROJECT TYPES</div>
+          <div style="font:400 10.5px 'Geist',sans-serif; color:#565d6e; margin-bottom:11px;">Grouped as clusters on the map</div>
+          <sc-for list="{{ types }}" as="t" hint-placeholder-count="6">
+            <div style="display:flex; align-items:center; gap:10px; padding:4.5px 0; font-size:12.5px; color:#b3bacb;">
+              <span style="width:8px; height:8px; border-radius:2px; border:1.5px solid #7c8597;"></span>
+              <span style="flex:1;">{{ t.label }}</span>
+              <span style="font:500 11.5px 'Geist Mono',monospace; color:#646c80;">{{ t.count }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+      <div>
+        <div style="font:600 10.5px 'Geist',sans-serif; letter-spacing:.13em; color:#5c6373; margin-bottom:2px;">GIT STATUS</div>
+        <div style="font:400 10.5px 'Geist',sans-serif; color:#565d6e; margin-bottom:11px;">Sets each node's color</div>
+        <sc-for list="{{ legend }}" as="g" hint-placeholder-count="5">
+          <div style="display:flex; align-items:center; gap:10px; padding:4px 0; font-size:12.5px; color:#9aa3b8;">
+            <span style="width:8px; height:8px; border-radius:50%; background:{{ g.color }}; box-shadow:0 0 7px {{ g.color }};"></span>
+            <span style="white-space:nowrap;">{{ g.label }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="flex:1;"></div>
+      <div style="border-radius:9px; background:rgba(110,139,255,.08); border:1px solid rgba(110,139,255,.18); padding:11px 12px; font:400 11.5px/1.5 'Geist',sans-serif; color:#9fb0e8; animation:hintpulse 2.6s ease-in-out infinite;">{{ hint }}</div>
+    </div>
+
+    <!-- canvas -->
+    <div style="flex:1; position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 90% at 40% 22%, #161d36 0%, #0a0b10 58%), radial-gradient(90% 90% at 85% 95%, #1d1330 0%, transparent 60%);">
+      <sc-for list="{{ bgStars }}" as="b" hint-placeholder-count="40"><div style="{{ b.style }}"></div></sc-for>
+
+      <div style="{{ animStyle }}">
+        <!-- HUB -->
+        <sc-if value="{{ isHub }}" hint-placeholder-val="{{ true }}">
+          <svg width="1040" height="540" style="position:absolute; inset:0; overflow:visible; pointer-events:none;">
+            <sc-for list="{{ hubEdges }}" as="e" hint-placeholder-count="24"><line x1="{{ e.x1 }}" y1="{{ e.y1 }}" x2="{{ e.x2 }}" y2="{{ e.y2 }}" stroke="{{ e.stroke }}" stroke-width="1"></line></sc-for>
+          </svg>
+          <sc-for list="{{ hubLabels }}" as="l" hint-placeholder-count="7"><span style="{{ l.style }}">{{ l.text }}</span></sc-for>
+          <sc-for list="{{ hubStars }}" as="s" hint-placeholder-count="22">
+            <div onClick="{{ s.onClick }}" style="{{ s.hitStyle }}" style-hover="{{ s.hitHover }}"><div style="{{ s.dotStyle }}"></div></div>
+          </sc-for>
+        </sc-if>
+
+        <!-- WORKTREES -->
+        <sc-if value="{{ isWork }}" hint-placeholder-val="{{ false }}">
+          <svg width="1040" height="540" style="position:absolute; inset:0; overflow:visible; pointer-events:none;">
+            <sc-for list="{{ orbits }}" as="o" hint-placeholder-count="3"><ellipse cx="{{ o.cx }}" cy="{{ o.cy }}" rx="{{ o.rx }}" ry="{{ o.ry }}" fill="none" stroke="rgba(150,170,255,.13)" stroke-width="1" stroke-dasharray="2 6"></ellipse></sc-for>
+          </svg>
+          <div style="{{ wtMain.hitStyle }}"><div style="{{ wtMain.style }}"></div></div>
+          <span style="{{ wtMain.labelStyle }}">{{ wtMain.label }}</span>
+          <sc-for list="{{ worktrees }}" as="w" hint-placeholder-count="10">
+            <div onClick="{{ w.onClick }}" style="{{ w.hitStyle }}" style-hover="{{ w.hitHover }}"><div style="{{ w.dotStyle }}"></div></div>
+          </sc-for>
+          <sc-for list="{{ worktrees }}" as="w" hint-placeholder-count="10"><span style="{{ w.labelStyle }}">{{ w.branch }}</span></sc-for>
+        </sc-if>
+
+        <!-- TREE -->
+        <sc-if value="{{ isTree }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute; left:150px; top:54px; font:600 10px 'Geist',sans-serif; letter-spacing:.14em; color:#9aa3b8;">LATEST</div>
+          <div style="position:absolute; left:177px; top:76px; width:1px; height:404px; background:linear-gradient(#8a92a4aa,#8a92a422);"></div>
+          <div style="position:absolute; left:171px; top:470px; color:#5c6373; font-size:11px; line-height:0;">▼</div>
+          <div style="position:absolute; left:152px; top:488px; font:600 10px 'Geist',sans-serif; letter-spacing:.14em; color:#5c6373;">OLDEST</div>
+          <svg width="1040" height="540" style="position:absolute; inset:0; overflow:visible; pointer-events:none;">
+            <sc-for list="{{ treeEdges }}" as="e" hint-placeholder-count="14"><line x1="{{ e.x1 }}" y1="{{ e.y1 }}" x2="{{ e.x2 }}" y2="{{ e.y2 }}" stroke="{{ e.stroke }}" stroke-width="2" stroke-linecap="round"></line></sc-for>
+          </svg>
+          <sc-for list="{{ treeBranches }}" as="t" hint-placeholder-count="4"><span style="{{ t.style }}">{{ t.text }}</span></sc-for>
+          <sc-for list="{{ treeStars }}" as="c" hint-placeholder-count="13">
+            <div onClick="{{ c.onClick }}" onDoubleClick="{{ c.onCheckout }}" style="{{ c.hitStyle }}"><div style="{{ c.dotStyle }}"></div></div>
+          </sc-for>
+          <sc-for list="{{ treeStars }}" as="c" hint-placeholder-count="13"><span style="{{ c.hashStyle }}">{{ c.h }}</span></sc-for>
+        </sc-if>
+      </div>
+      <sc-if value="{{ showBack }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ goBack }}" style="position:absolute; top:16px; left:16px; z-index:5; display:flex; align-items:center; gap:7px; height:32px; padding:0 13px 0 9px; border-radius:8px; background:rgba(14,17,23,.72); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.1); font:500 12.5px 'Geist',sans-serif; color:#cdd4e6; cursor:pointer;" style-hover="background:rgba(32,38,52,.9);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg> Back
+        </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <!-- bottom panel -->
+  <sc-if value="{{ showTerm }}" hint-placeholder-val="{{ true }}">
+    <div style="height:196px; flex:none; border-top:1px solid rgba(255,255,255,.07); background:#080a0e; display:flex; flex-direction:column;">
+      <div style="height:34px; flex:none; display:flex; align-items:flex-end; gap:2px; padding:0 10px; border-bottom:1px solid rgba(255,255,255,.05);">
+        <div style="display:flex; align-items:center; gap:8px; height:27px; padding:0 13px; border-radius:7px 7px 0 0; background:#0e1117; border:1px solid rgba(255,255,255,.06); border-bottom:none; font:500 12px 'Geist Mono',monospace; color:#d2d8e6;">
+          <span style="width:6px; height:6px; border-radius:50%; background:#35D08B;"></span>{{ termTab }}
+        </div>
+      </div>
+      <div style="flex:1; padding:12px 18px; font:400 13px/1.7 'Geist Mono',monospace; overflow:hidden;">
+        <sc-for list="{{ termLines }}" as="line" hint-placeholder-count="4">
+          <div><sc-for list="{{ line }}" as="tok" hint-placeholder-count="3"><span style="color:{{ tok.c }}; white-space:pre;">{{ tok.t }}</span></sc-for></div>
+        </sc-for>
+        <div><sc-for list="{{ promptTokens }}" as="tok" hint-placeholder-count="2"><span style="color:{{ tok.c }}; white-space:pre;">{{ tok.t }}</span></sc-for><span style="display:inline-block; width:8px; height:15px; background:#e7eaf2; vertical-align:-2px; animation:blink 1.1s step-end infinite;"></span></div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- CHANGES panel (tree view) -->
+  <sc-if value="{{ isTree }}" hint-placeholder-val="{{ false }}">
+    <div style="height:232px; flex:none; border-top:1px solid rgba(255,255,255,.07); background:#080a0e; display:flex; flex-direction:column;">
+      <div style="height:46px; flex:none; display:flex; align-items:center; gap:11px; padding:0 18px; border-bottom:1px solid rgba(255,255,255,.05);">
+        <span style="width:9px; height:9px; border-radius:50%; background:{{ selCommit.color }}; box-shadow:0 0 8px {{ selCommit.color }};"></span>
+        <span style="font:600 13px 'Geist Mono',monospace; color:#f0f2f7;">{{ selCommit.h }}</span>
+        <span style="font:500 13px 'Geist',sans-serif; color:#d2d8e6;">{{ selCommit.msg }}</span>
+        <span style="font:400 12px 'Geist',sans-serif; color:#646c80;">{{ selCommit.meta }}</span>
+        <div style="flex:1;"></div>
+        <sc-if value="{{ selIsHead }}" hint-placeholder-val="{{ true }}"><span style="font:500 10.5px 'Geist',sans-serif; letter-spacing:.06em; color:#aebbff; background:rgba(110,139,255,.14); padding:4px 9px; border-radius:6px;">● HEAD</span></sc-if>
+        <sc-if value="{{ selCanCheckout }}" hint-placeholder-val="{{ false }}"><span onClick="{{ selCheckout }}" style="display:flex; align-items:center; gap:6px; font:500 11.5px 'Geist',sans-serif; color:#cdd6ff; background:#2a3350; border:1px solid rgba(110,139,255,.3); padding:5px 11px; border-radius:7px; cursor:pointer;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17l6-6-6-6M12 19h8"/></svg>Checkout</span></sc-if>
+        <span style="font:400 11px 'Geist',sans-serif; color:#4a5163;">double-click a node to checkout</span>
+      </div>
+      <div style="flex:1; display:flex; min-height:0;">
+        <!-- file list -->
+        <div style="width:46%; flex:none; padding:10px 14px 10px 18px; border-right:1px solid rgba(255,255,255,.05); overflow:hidden;">
+          <div style="font:600 10.5px 'Geist',sans-serif; letter-spacing:.1em; color:#5c6373; margin-bottom:8px;">CHANGED FILES · {{ selFileCount }}</div>
+          <sc-for list="{{ selFiles }}" as="f" hint-placeholder-count="3">
+            <div style="display:flex; align-items:center; gap:10px; padding:5px 0; font:400 12px 'Geist Mono',monospace;">
+              <span style="width:16px; text-align:center; font-weight:600; color:{{ f.stColor }};">{{ f.st }}</span>
+              <span style="flex:1; color:#c2c9d8; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ f.path }}</span>
+              <span style="color:#35D08B; font-size:11px;">{{ f.addT }}</span>
+              <span style="color:#FF6B6B; font-size:11px;">{{ f.delT }}</span>
+              <span style="display:flex; gap:2px; width:54px;"><span style="height:7px; border-radius:2px; background:#35D08B; width:{{ f.addW }}px;"></span><span style="height:7px; border-radius:2px; background:#FF6B6B; width:{{ f.delW }}px;"></span></span>
+            </div>
+          </sc-for>
+        </div>
+        <!-- diff preview -->
+        <div style="flex:1; padding:10px 18px; overflow:hidden; font:400 12px/1.62 'Geist Mono',monospace;">
+          <div style="color:#7c8597; margin-bottom:4px;">{{ diffFile }}</div>
+          <div style="color:#646c80;">@@ -41,7 +41,9 @@ func (h *Auth) Refresh(ctx, sid)</div>
+          <div style="color:#aeb6c8;">  claims, err := h.parse(tok)</div>
+          <div style="background:rgba(255,107,107,.1); color:#ff9d9d;">- return errSession</div>
+          <div style="background:rgba(53,208,139,.1); color:#7bd4a8;">+ rotated, err := h.store.Rotate(ctx, sid)</div>
+          <div style="background:rgba(53,208,139,.1); color:#7bd4a8;">+ if err != nil { return err }</div>
+          <div style="color:#aeb6c8;">  return h.issue(rotated)</div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:820},&quot;reduceMotion&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;zoomDepth&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;default&quot;:7,&quot;min&quot;:3,&quot;max&quot;:12,&quot;step&quot;:0.5,&quot;tsType&quot;:&quot;number&quot;}}">
+class Component extends DCLogic {
+  state = { view:'hub', phase:'idle', dir:'in', leaveOrigin:{ x:520, y:262 }, enterOrigin:{ x:520, y:262 }, origins:[], project:null, worktree:null, head:'12ab9c', selected:'12ab9c' };
+
+  buildGeometry() {
+    const SC = { clean:'#35D08B', dirty:'#F5A623', ahead:'#6E8BFF', behind:'#FF6B6B', untracked:'#8B93A7' };
+    const rng = (seed) => { let t = seed >>> 0; return () => { t += 0x6D2B79F5; let x = Math.imul(t ^ (t >>> 15), 1 | t); x ^= x + Math.imul(x ^ (x >>> 7), 61 | x); return ((x ^ (x >>> 14)) >>> 0) / 4294967296; }; };
+    const mkL = (x, y, text, color, size, cap) => ({ text, style:`position:absolute; left:${x}px; top:${y}px; transform:translate(-50%,-50%); font:${cap?'600':'500'} ${size}px ${cap?"'Geist',sans-serif":"'Geist Mono',monospace"}; color:${color}; letter-spacing:${cap?'.13em':'0'}; text-transform:${cap?'uppercase':'none'}; white-space:nowrap; pointer-events:none;` });
+    const mkE = (x1, y1, x2, y2, dim) => ({ x1:x1.toFixed(1), y1:y1.toFixed(1), x2:x2.toFixed(1), y2:y2.toFixed(1), stroke: dim ? 'rgba(150,170,255,.06)' : 'rgba(150,170,255,.15)' });
+
+    // ---- HUB ----
+    const clusters = [
+      { type:'Frontend', cx:205, cy:148, spread:70, names:['tuntun-web','checkout-ui','design-system','admin-portal','marketing-site'], stat:['ahead','dirty','clean','clean','behind'] },
+      { type:'Backend', cx:498, cy:118, spread:82, names:['tuntun-api','payments-svc','auth-gateway','ledger-go','notif-worker'], stat:['dirty','clean','ahead','clean','untracked'] },
+      { type:'iOS', cx:788, cy:158, spread:56, names:['Tuntun-iOS','WalletKit','ScanSDK'], stat:['clean','dirty','clean'] },
+      { type:'macOS', cx:862, cy:342, spread:52, names:['ZeusTerm','MenuBarX','ColorPick'], stat:['dirty','clean','ahead'] },
+      { type:'Mobile', cx:608, cy:408, spread:58, names:['tuntun-flutter','driver-rn','kiosk-app'], stat:['behind','clean','dirty'] },
+      { type:'Scripts', cx:218, cy:392, spread:64, names:['dotfiles','deploy-kit','db-migrate','backups'], stat:['clean','clean','untracked','clean'] }
+    ];
+    const hubCx = 512, hubCy = 252, r = rng(1337);
+    const stars = [], labels = [], edges = [];
+    stars.push({ x:hubCx, y:hubCy, size:16, color:SC.clean, name:'tuntun-mono', hub:true });
+    labels.push(mkL(hubCx, hubCy - 26, 'tuntun-mono', '#F5C451', 12, false));
+    clusters.forEach((c, ci) => {
+      labels.push(mkL(c.cx, c.cy - c.spread - 12, c.type, '#cfd5e6', 12.5, true));
+      const nodes = [];
+      for (let i = 0; i < c.names.length; i++) {
+        const ang = (i / c.names.length) * Math.PI * 2 + (r() - 0.5) * 0.9 + ci * 1.7;
+        const rad = c.spread * (0.42 + r() * 0.6);
+        const x = c.cx + Math.cos(ang) * rad, y = c.cy + Math.sin(ang) * rad * 0.82;
+        const status = c.stat[i] || 'clean';
+        const size = 6 + (i % 2 ? 2.5 : 0) + (i === 0 ? 3 : 0);
+        const st = { x, y, size, status, color:SC[status], name:c.names[i] };
+        nodes.push(st); stars.push(st);
+      }
+      for (let i = 0; i < nodes.length - 1; i++) edges.push(mkE(nodes[i].x, nodes[i].y, nodes[i+1].x, nodes[i+1].y, false));
+      edges.push(mkE(nodes[0].x, nodes[0].y, hubCx, hubCy, true));
+    });
+    stars.forEach(s => {
+      const dur = (2.6 + (s.size % 3) * 0.7).toFixed(1);
+      s.dotStyle = `width:${s.size}px; height:${s.size}px; border-radius:50%; background:${s.color}; box-shadow:0 0 ${(s.size*2)|0}px ${(s.size*0.6)|0}px ${s.color}66, 0 0 4px 1px ${s.color}; animation:twinkle ${dur}s ease-in-out infinite; pointer-events:none;` + (s.hub ? 'border:1.5px solid rgba(255,255,255,.55);' : '');
+      s.hitStyle = `position:absolute; left:${s.x.toFixed(1)}px; top:${s.y.toFixed(1)}px; width:34px; height:34px; margin:-17px 0 0 -17px; display:flex; align-items:center; justify-content:center; border-radius:50%; cursor:pointer; transition:background .15s;`;
+      s.hitHover = `background:${s.color}22;`;
+    });
+    const bg = []; const rb = rng(99);
+    for (let i = 0; i < 56; i++) bg.push({ style:`position:absolute; left:${(rb()*100).toFixed(1)}%; top:${(rb()*100).toFixed(1)}%; width:${(rb()*1.6+0.5).toFixed(1)}px; height:${(rb()*1.6+0.5).toFixed(1)}px; border-radius:50%; background:#cdd6ff; opacity:${(rb()*0.4+0.12).toFixed(2)}; animation:twinkle ${(rb()*3+2).toFixed(1)}s ease-in-out infinite;` });
+
+    // ---- WORKTREES ----
+    const wcx = 512, wcy = 256, sq = 0.72;
+    const wtData = [
+      { b:'hotfix/payment-retry', s:'dirty', n:'api-hotfix' }, { b:'review/pr-482', s:'clean', n:'api-review' }, { b:'perf/db-pool', s:'ahead', n:'api-perf' },
+      { b:'feature/oauth-pkce', s:'dirty', n:'api-auth' }, { b:'release/1.4', s:'clean', n:'api-rel' }, { b:'fix/cache-ttl', s:'behind', n:'api-cache' },
+      { b:'chore/go-1.22', s:'clean', n:'api-chore' }, { b:'spike/grpc', s:'untracked', n:'api-spike' }, { b:'docs/api-v2', s:'clean', n:'api-docs' }, { b:'feature/webhooks', s:'ahead', n:'api-wh' }
+    ];
+    const rings = [{ r:115, n:3, off:0.4 }, { r:180, n:4, off:0.85 }, { r:242, n:3, off:0.15 }];
+    const orbits = rings.map(rg => ({ cx:wcx, cy:wcy, rx:rg.r, ry:(rg.r*sq).toFixed(1) }));
+    const worktrees = []; let wi = 0;
+    rings.forEach(rg => {
+      for (let i = 0; i < rg.n; i++) {
+        const ang = rg.off + (i / rg.n) * Math.PI * 2;
+        const x = wcx + Math.cos(ang) * rg.r, y = wcy + Math.sin(ang) * rg.r * sq;
+        const wt = wtData[wi++]; const color = SC[wt.s]; const size = 9.5;
+        const ux = Math.cos(ang), uy = Math.sin(ang) * sq; const ul = Math.hypot(ux, uy) || 1;
+        const lx = x + ux / ul * 16, ly = y + uy / ul * 16; const right = ux >= 0;
+        worktrees.push({ branch:wt.b, name:wt.n, status:wt.s, color, x, y,
+          dotStyle:`width:${size}px; height:${size}px; border-radius:50%; background:${color}; box-shadow:0 0 ${(size*2)|0}px ${(size*0.6)|0}px ${color}66, 0 0 4px 1px ${color}; animation:twinkle ${(2.6+i*0.4).toFixed(1)}s ease-in-out infinite; pointer-events:none;`,
+          hitStyle:`position:absolute; left:${x.toFixed(1)}px; top:${y.toFixed(1)}px; width:34px; height:34px; margin:-17px 0 0 -17px; display:flex; align-items:center; justify-content:center; border-radius:50%; cursor:pointer; transition:background .15s;`,
+          hitHover:`background:${color}22;`,
+          labelStyle:`position:absolute; left:${lx.toFixed(1)}px; top:${ly.toFixed(1)}px; transform:translate(${right?'0':'-100%'},-50%); font:500 10.5px 'Geist Mono',monospace; color:#aeb6c8; white-space:nowrap; pointer-events:none; padding-${right?'left':'right'}:6px;` });
+      }
+    });
+    const wtMain = {
+      style:`width:17px; height:17px; border-radius:50%; background:#F5C451; border:2px solid #fff; box-shadow:0 0 34px 12px #F5C45199, 0 0 0 6px #F5C45122; pointer-events:none;`,
+      hitStyle:`position:absolute; left:${wcx}px; top:${wcy}px; width:40px; height:40px; margin:-20px 0 0 -20px; display:flex; align-items:center; justify-content:center;`,
+      labelStyle:`position:absolute; left:${wcx}px; top:${wcy+20}px; transform:translateX(-50%); font:600 12px 'Geist Mono',monospace; color:#F5C451; white-space:nowrap; pointer-events:none;`
+    };
+
+    // ---- TREE ----
+    const TC = { main:'#F5C451', develop:'#6E8BFF', auth:'#B98BFF', cache:'#57E0FF' };
+    const filePool = ['internal/handler/auth.go','internal/cache/redis.go','go.mod','api/v2/routes.go','internal/session/store.go','cmd/server/main.go','internal/oauth/pkce.go','config/flags.yaml','Makefile','internal/ledger/post.go','pkg/token/rotate.go','internal/middleware/cors.go'];
+    const stCol = { M:'#F5A623', A:'#35D08B', D:'#FF6B6B' };
+    const fileGen = (h) => {
+      const rs = rng((parseInt(h, 16) >>> 0) || 7); const n = 2 + Math.floor(rs() * 2); const used = {}; const out = [];
+      for (let i = 0; i < n; i++) {
+        let idx = Math.floor(rs() * filePool.length); while (used[idx]) idx = (idx + 1) % filePool.length; used[idx] = 1;
+        const sts = ['M','M','A','D']; const st = sts[Math.floor(rs() * sts.length)];
+        const add = st === 'D' ? 0 : Math.floor(rs() * 90) + 4; const del = st === 'A' ? 0 : Math.floor(rs() * 40);
+        out.push({ path:filePool[idx], st, stColor:stCol[st], addT:'+' + add, delT:'-' + del, addW:Math.min(40, 3 + add * 0.4).toFixed(0), delW:Math.min(28, del * 0.5).toFixed(0) });
+      }
+      return out;
+    };
+    const cdef = [
+      { x:580, y:75,  b:'develop', h:'12ab9c', t:13, msg:'session refactor',     meta:'Maya · 1h ago' },
+      { x:580, y:150, b:'develop', h:'aa55fe', t:12, msg:'merge feature/auth',   meta:'Román · 3h ago' },
+      { x:580, y:234, b:'develop', h:'81c3e0', t:9,  msg:'api v2 routes',        meta:'Maya · 8h ago' },
+      { x:580, y:318, b:'develop', h:'2b9f44', t:7,  msg:'feature flags',        meta:'Sam · 1d ago' },
+      { x:720, y:150, b:'auth',    h:'90ab33', t:11, msg:'token rotation',       meta:'Priya · 5h ago' },
+      { x:720, y:234, b:'auth',    h:'77de10', t:10, msg:'oauth pkce',           meta:'Priya · 1d ago' },
+      { x:430, y:108, b:'main',    h:'5fa0cd', t:8,  msg:'release 1.4',          meta:'ci-bot · 2d ago' },
+      { x:430, y:315, b:'main',    h:'9f12bb', t:6,  msg:'merge fix/cache',      meta:'Román · 2d ago' },
+      { x:430, y:388, b:'main',    h:'c0d4aa', t:3,  msg:'auth scaffold',        meta:'Maya · 3d ago' },
+      { x:430, y:446, b:'main',    h:'7b2e10', t:2,  msg:'ci pipeline',          meta:'Sam · 4d ago' },
+      { x:430, y:498, b:'main',    h:'a1f3c9', t:1,  msg:'init monorepo',        meta:'Sam · 5d ago' },
+      { x:300, y:234, b:'cache',   h:'cc09aa', t:5,  msg:'invalidate keys',      meta:'Lee · 2d ago' },
+      { x:300, y:318, b:'cache',   h:'5512ee', t:4,  msg:'redis ttl bug',        meta:'Lee · 3d ago' }
+    ];
+    cdef.forEach(c => { c.color = TC[c.b]; c.files = fileGen(c.h); });
+    const tE = (x1, y1, x2, y2, b) => ({ x1, y1, x2, y2, stroke: TC[b] + 'cc' });
+    const treeEdges = [
+      tE(580,75,580,150,'develop'), tE(580,150,580,234,'develop'), tE(580,234,580,318,'develop'),
+      tE(580,150,720,150,'auth'), tE(720,150,720,234,'auth'), tE(720,234,580,234,'auth'),
+      tE(580,318,430,315,'develop'),
+      tE(430,108,430,315,'main'), tE(430,315,430,388,'main'), tE(430,388,430,446,'main'), tE(430,446,430,498,'main'),
+      tE(430,315,300,234,'cache'), tE(300,234,300,318,'cache'), tE(300,318,430,388,'cache')
+    ];
+    const mkBr = (x, y, text, color) => ({ text, style:`position:absolute; left:${x}px; top:${y}px; transform:translateY(-50%); font:500 11.5px 'Geist Mono',monospace; color:${color}; background:${color}1f; border:1px solid ${color}44; padding:3px 9px; border-radius:6px; white-space:nowrap;` });
+    const treeBranches = [ mkBr(348,82,'main',TC.main), mkBr(505,46,'develop',TC.develop), mkBr(656,120,'feature/auth',TC.auth), mkBr(186,210,'fix/cache',TC.cache) ];
+
+    return { SC, hub:{ stars, labels, edges, bg }, work:{ orbits, worktrees, main:wtMain }, tree:{ cdef, treeEdges, treeBranches } };
+  }
+
+  // Continuous nested zoom: a child level lives INSIDE the clicked node and is
+  // anchored at that node's position, so diving in and backing out are exact reverses
+  // and the relative scale between levels reads as one zoomable space.
+  animStyle() {
+    const { phase, dir, leaveOrigin, enterOrigin } = this.state;
+    const big = this.props.zoomDepth ?? 7;
+    const small = (1 / big) * 1.15; // reciprocal of big → consistent scale ratio between levels
+    const wrap = `position:relative; width:1040px; height:540px; pointer-events:${phase==='idle'?'auto':'none'};`;
+    if (this.props.reduceMotion) return wrap + ' transform:none; opacity:1;';
+    if (phase === 'leave') {
+      const o = leaveOrigin || { x:520, y:262 };
+      const sc = dir === 'in' ? big : small; // dive in: this (parent) flies INTO the node; back: this (child) collapses into the node
+      return wrap + ` transform-origin:${o.x}px ${o.y}px; transform:scale(${sc}); opacity:0; transition:transform .46s cubic-bezier(.6,0,.78,0), opacity .46s ease-in;`;
+    }
+    const o = enterOrigin || { x:520, y:262 };
+    if (phase === 'enter') {
+      const sc = dir === 'in' ? small : big; // dive in: child unfolds FROM the node (small→1); back: parent pulls back out (big→1)
+      return wrap + ` transform-origin:${o.x}px ${o.y}px; transform:scale(${sc}); opacity:0; transition:none;`;
+    }
+    return wrap + ` transform-origin:${o.x}px ${o.y}px; transform:scale(1); opacity:1; transition:transform .52s cubic-bezier(.16,1,.3,1), opacity .42s ease-out;`;
+  }
+
+  // dive in: remember the focal node; both layers pivot on it
+  dive(target, focal, ctx) {
+    if (this.state.phase !== 'idle') return;
+    const origins = this.state.origins.concat([focal]);
+    if (this.props.reduceMotion) { this.setState(Object.assign({ view:target, origins }, ctx)); return; }
+    this.setState({ phase:'leave', dir:'in', leaveOrigin:focal, enterOrigin:focal, origins });
+    setTimeout(() => this.setState(Object.assign({ view:target, phase:'enter' }, ctx)), 430);
+    setTimeout(() => this.setState({ phase:'idle' }), 480);
+  }
+
+  // back out: reuse the focal node we entered through, so it's a perfect reverse
+  back(parentView) {
+    if (this.state.phase !== 'idle') return;
+    const origins = this.state.origins.slice();
+    const focal = origins.pop() || { x:520, y:262 };
+    if (this.props.reduceMotion) { this.setState({ view:parentView, origins }); return; }
+    this.setState({ phase:'leave', dir:'out', leaveOrigin:focal, enterOrigin:focal });
+    setTimeout(() => this.setState({ view:parentView, phase:'enter', origins }), 430);
+    setTimeout(() => this.setState({ phase:'idle' }), 480);
+  }
+
+  // jump back to a specific level (handles multi-level breadcrumb hops), pivoting on the right boundary node
+  backTo(target) {
+    if (this.state.phase !== 'idle') return;
+    const depth = target === 'hub' ? 0 : 1;
+    const origins = this.state.origins.slice();
+    const focal = origins[depth] || { x:520, y:262 };
+    const newOrigins = origins.slice(0, depth);
+    if (this.props.reduceMotion) { this.setState({ view:target, origins:newOrigins }); return; }
+    this.setState({ phase:'leave', dir:'out', leaveOrigin:focal, enterOrigin:focal });
+    setTimeout(() => this.setState({ view:target, phase:'enter', origins:newOrigins }), 430);
+    setTimeout(() => this.setState({ phase:'idle' }), 480);
+  }
+
+  renderVals() {
+    if (!this.geo) this.geo = this.buildGeometry();
+    const g = this.geo, st = this.state, view = st.view;
+    const proj = st.project || 'tuntun-api';
+    const SC = g.SC;
+
+    // handlers
+    g.hub.stars.forEach(s => { s.onClick = () => { if (!s.hub) this.dive('work', { x:s.x, y:s.y }, { project:s.name }); }; });
+    g.work.worktrees.forEach(w => { w.onClick = () => this.dive('tree', { x:w.x, y:w.y }, { worktree:w, head:'12ab9c', selected:'12ab9c' }); });
+    g.work.main.label = proj + ' · main';
+
+    // tree stars styled by head/selected
+    const headRank = (g.tree.cdef.find(c => c.h === st.head) || {}).t || 99;
+    const treeStars = g.tree.cdef.map(c => {
+      const isHead = c.h === st.head, sel = c.h === st.selected, dim = c.t > headRank;
+      const sz = isHead ? 15 : 9;
+      let dot = `width:${sz}px; height:${sz}px; border-radius:50%; background:${c.color}; box-shadow:0 0 ${(sz*2)|0}px ${(sz*0.7)|0}px ${c.color}66, 0 0 4px 1px ${c.color}; transition:all .25s; pointer-events:none;`;
+      if (isHead) dot += ` border:2px solid #fff; box-shadow:0 0 ${(sz*2.6)|0}px ${sz}px ${c.color}aa, 0 0 0 6px ${c.color}22;`;
+      else if (sel) dot += ` box-shadow:0 0 ${(sz*2.4)|0}px ${sz}px ${c.color}88, 0 0 0 4px rgba(255,255,255,.5);`;
+      if (dim) dot += ' opacity:.3; filter:grayscale(.5);';
+      return { h:c.h, color:c.color,
+        dotStyle: dot,
+        hitStyle:`position:absolute; left:${c.x}px; top:${c.y}px; width:32px; height:32px; margin:-16px 0 0 -16px; display:flex; align-items:center; justify-content:center; cursor:pointer;`,
+        hashStyle:`position:absolute; left:${c.x}px; top:${c.y + sz/2 + 9}px; transform:translateX(-50%); font:400 9.5px 'Geist Mono',monospace; color:${isHead?'#cdd6ff':'rgba(180,190,215,.5)'}; white-space:nowrap; pointer-events:none;${dim?' opacity:.4;':''}`,
+        onClick: () => this.setState({ selected:c.h }),
+        onCheckout: () => this.setState({ head:c.h, selected:c.h }) };
+    });
+
+    // selected commit + files
+    const selDef = g.tree.cdef.find(c => c.h === st.selected) || g.tree.cdef[0];
+    const selFiles = selDef.files;
+    const detached = st.head !== '12ab9c';
+
+    // breadcrumb
+    const baseS = 'font-size:13px; cursor:pointer; color:#8a92a4;', curS = 'font-size:13px; font-weight:600; color:#d2d8e6;';
+    const crumbs = [{ label:'ZeusTerm', sep:false, style: view==='hub'?curS:baseS, onClick: view==='hub'?null:() => this.backTo('hub') }];
+    if (view !== 'hub') crumbs.push({ label:proj, sep:true, style: view==='work'?curS:baseS, onClick: view==='work'?null:() => this.backTo('work') });
+    if (view === 'tree') crumbs.push({ label:(st.worktree?st.worktree.branch:'develop'), sep:true, style:curS, onClick:null });
+
+    // rail context
+    const ctx = view==='hub' ? { title:'All projects', sub:'247 detected · ~/dev', hint:'Click a star to dive into its worktrees →' }
+      : view==='work' ? { title:proj, sub:'10 linked worktrees', hint:'Click a worktree to open its branch tree →' }
+      : { title:(st.worktree?st.worktree.branch:'develop'), sub:proj + ' · worktree', hint:'Click a commit for its changes · double-click to checkout' };
+
+    // terminal (hub / work)
+    const P='#F5C451', B='#6E8BFF', T='#e7eaf2', D='#646c80', C='#57E0FF', G='#7bd4a8';
+    let termLines = [], promptTokens = [], termTab = 'zsh';
+    if (view === 'hub') {
+      termLines = [
+        [{ t:'~', c:C }, { t:' ❯ ', c:B }, { t:'zeus scan ~/dev', c:T }],
+        [{ t:'↳ ', c:D }, { t:'247 projects', c:G }, { t:' · 6 types · 4 dirty · 2 behind', c:D }]
+      ];
+      promptTokens = [{ t:'~', c:C }, { t:' ❯ ', c:B }];
+      termTab = '~/dev — zsh';
+    } else if (view === 'work') {
+      termLines = [
+        [{ t:'~', c:C }, { t:' ❯ ', c:B }, { t:'zeus open ' + proj, c:T }],
+        [{ t:'↳ cd ~/dev/tuntun/' + proj, c:D }],
+        [{ t:proj, c:P }, { t:' ❯ ', c:B }, { t:'git worktree list', c:T }],
+        [{ t:'  10 linked worktrees · 3 dirty', c:D }]
+      ];
+      promptTokens = [{ t:proj, c:P }, { t:' ❯ ', c:B }];
+      termTab = proj + ' — zsh';
+    }
+
+    return {
+      isHub:view==='hub', isWork:view==='work', isTree:view==='tree', showTerm:view!=='tree',
+      animStyle:this.animStyle(),
+      hubStars:g.hub.stars, hubLabels:g.hub.labels, hubEdges:g.hub.edges, bgStars:g.hub.bg,
+      orbits:g.work.orbits, worktrees:g.work.worktrees, wtMain:g.work.main,
+      treeStars, treeEdges:g.tree.treeEdges, treeBranches:g.tree.treeBranches,
+      crumbs, detached, head:st.head,
+      railTitle:ctx.title, railSub:ctx.sub, hint:ctx.hint, showBack:view!=='hub',
+      goBack:() => this.backTo(view==='tree'?'work':'hub'),
+      termLines, promptTokens, termTab,
+      selCommit:{ h:selDef.h, msg:selDef.msg, meta:selDef.meta, color:selDef.color },
+      selFiles, selFileCount:selFiles.length, diffFile:selFiles[0]?selFiles[0].path:'',
+      selIsHead: st.selected === st.head, selCanCheckout: st.selected !== st.head,
+      selCheckout: () => this.setState({ head:st.selected }),
+      types:[
+        { label:'Frontend', count:48 }, { label:'Backend', count:62 }, { label:'iOS', count:19 },
+        { label:'macOS / Swift', count:14 }, { label:'Mobile', count:11 }, { label:'Scripts & CLI', count:93 }
+      ],
+      legend:[
+        { label:'Clean', color:SC.clean }, { label:'Modified', color:SC.dirty }, { label:'Ahead', color:SC.ahead },
+        { label:'Behind', color:SC.behind }, { label:'Untracked', color:SC.untracked }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
