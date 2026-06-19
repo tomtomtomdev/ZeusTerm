@@ -16,6 +16,9 @@ public protocol GitReading: Sendable {
     /// Commits reachable from `branch`, newest first. Paginated and lazy —
     /// callers page on scroll; the full history is never walked eagerly (SPEC §2.2).
     func commits(forBranch branch: String, in repo: URL, limit: Int, skip: Int) async throws -> [Commit]
+
+    /// Changed files + unified diff for a commit — drives the branch-tree Changes panel (§7).
+    func diff(forCommit sha: String, in repo: URL) async throws -> CommitDiff
 }
 
 /// Provides command autosuggestions for the right-arrow accept feature (#4).

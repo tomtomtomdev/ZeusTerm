@@ -29,7 +29,7 @@ public struct GitCLIService: GitReading {
 
     public func commits(forBranch branch: String, in repo: URL, limit: Int, skip: Int) async throws -> [Commit] {
         let sep = Self.fieldSeparator
-        let format = "%H\(sep)%s\(sep)%an\(sep)%aI"
+        let format = "%H\(sep)%s\(sep)%an\(sep)%aI\(sep)%P"
         // `--end-of-options` keeps a `-`-leading branch name from being parsed as a git
         // flag (defensive: branch values reach this public port from outside ZeusGit).
         let output = try runGit(
@@ -37,6 +37,50 @@ public struct GitCLIService: GitReading {
              "--end-of-options", branch],
             in: repo)
         return parseCommits(output)
+    }
+
+    public func diff(forCommit sha: String, in repo: URL) async throws -> CommitDiff {
+        let numstat = try runGit(["show", "--numstat", "--format=", "--end-of-options", sha], in: repo)
+        let nameStatus = try runGit(["show", "--name-status", "--format=", "--end-of-options", sha], in: repo)
+        let patch = try runGit(["show", "--format=", "--end-of-options", sha], in: repo)
+        return CommitDiff(sha: sha,
+                          files: parseFileChanges(numstat: numstat, nameStatus: nameStatus),
+                          patch: patch)
+    }
+
+    /// Joins `git show --numstat` (line counts) with `--name-status` (A/M/D) by path,
+    /// preserving numstat order. Binary `-` counts become 0; renames map to the new path.
+    func parseFileChanges(numstat: String, nameStatus: String) -> [FileChange] {
+        var counts: [String: (Int, Int)] = [:]
+        var order: [String] = []
+        for line in numstat.split(separator: "\n") {
+            let fields = String(line).components(separatedBy: "\t")
+            guard fields.count >= 3 else { continue }
+            let path = fields[fields.count - 1]
+            counts[path] = (Int(fields[0]) ?? 0, Int(fields[1]) ?? 0)
+            order.append(path)
+        }
+
+        var statuses: [String: FileStatus] = [:]
+        for line in nameStatus.split(separator: "\n") {
+            let fields = String(line).components(separatedBy: "\t")
+            guard let code = fields.first?.first, let path = fields.last, fields.count >= 2 else { continue }
+            statuses[path] = Self.fileStatus(code)
+        }
+
+        return order.map { path in
+            let (additions, deletions) = counts[path] ?? (0, 0)
+            return FileChange(path: path, status: statuses[path] ?? .modified,
+                              additions: additions, deletions: deletions)
+        }
+    }
+
+    private static func fileStatus(_ code: Character) -> FileStatus {
+        switch code {
+        case "A": return .added
+        case "D": return .deleted
+        default:  return .modified
+        }
     }
 
     /// `git for-each-ref` args producing tab-separated local-branch rows (see `parseBranches`).
@@ -97,15 +141,17 @@ public struct GitCLIService: GitReading {
         return (count(after: "ahead "), count(after: "behind "))
     }
 
-    /// Parses unit-separated (0x1f) `git log` output. Format: `%H%x1f%s%x1f%an%x1f%aI`,
-    /// one commit per line. `%aI` is strict ISO 8601, so dates parse unambiguously.
+    /// Parses unit-separated (0x1f) `git log` output. Format: `%H%x1f%s%x1f%an%x1f%aI%x1f%P`,
+    /// one commit per line. `%aI` is strict ISO 8601; `%P` is a space-separated parent list.
     func parseCommits(_ output: String) -> [Commit] {
         let formatter = ISO8601DateFormatter()
         return output.split(separator: "\n", omittingEmptySubsequences: true).compactMap { raw in
             let fields = String(raw).components(separatedBy: Self.fieldSeparator)
-            guard fields.count == 4, !fields[0].isEmpty else { return nil }
+            guard fields.count == 5, !fields[0].isEmpty else { return nil }
             let date = formatter.date(from: fields[3]) ?? Date(timeIntervalSince1970: 0)
-            return Commit(id: fields[0], summary: fields[1], authorName: fields[2], date: date)
+            let parents = fields[4].split(separator: " ").map(String.init)
+            return Commit(id: fields[0], summary: fields[1], authorName: fields[2],
+                          date: date, parents: parents)
         }
     }
 

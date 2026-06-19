@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import ZeusDomain
 @testable import ZeusGit
 
 struct GitCLIServiceTests {
@@ -101,11 +102,12 @@ struct GitCLIServiceTests {
     }
 
     @Test func parsesCommitLog() {
-        // Unit-separated (US, 0x1f): %H %s %an %aI, one commit per line.
+        // Unit-separated (US, 0x1f): %H %s %an %aI %P, one commit per line.
+        // %P is a space-separated parent list (empty for a root commit).
         let us = "\u{1f}"
         let sample = """
-        a1b2c3d4\(us)fix CI\(us)tom\(us)1970-01-01T00:00:01Z
-        9f3da2b1\(us)add tests\(us)alice\(us)1970-01-01T00:00:02Z
+        a1b2c3d4\(us)fix CI\(us)tom\(us)1970-01-01T00:00:01Z\(us)p1 p2
+        9f3da2b1\(us)add tests\(us)alice\(us)1970-01-01T00:00:02Z\(us)
         """
         let commits = GitCLIService().parseCommits(sample)
 
@@ -114,9 +116,11 @@ struct GitCLIServiceTests {
         #expect(commits[0].summary == "fix CI")
         #expect(commits[0].authorName == "tom")
         #expect(commits[0].date == Date(timeIntervalSince1970: 1))
+        #expect(commits[0].parents == ["p1", "p2"])
         #expect(commits[1].id == "9f3da2b1")
         #expect(commits[1].summary == "add tests")
         #expect(commits[1].date == Date(timeIntervalSince1970: 2))
+        #expect(commits[1].parents == [])
     }
 
     @Test func readsLocalBranchesIntoMainWorktree() async throws {
@@ -147,5 +151,37 @@ struct GitCLIServiceTests {
         // Pagination: skip the newest, take one.
         let page = try await service.commits(forBranch: "main", in: repo, limit: 1, skip: 1)
         #expect(page.map(\.summary) == ["fix CI"])
+    }
+
+    @Test func parsesFileChangesFromNumstatAndNameStatus() {
+        let numstat = "10\t2\tsrc/a.swift\n5\t0\tsrc/b.swift\n0\t8\tsrc/c.swift"
+        let nameStatus = "M\tsrc/a.swift\nA\tsrc/b.swift\nD\tsrc/c.swift"
+        let changes = GitCLIService().parseFileChanges(numstat: numstat, nameStatus: nameStatus)
+
+        #expect(changes.count == 3)
+        #expect(changes[0] == FileChange(path: "src/a.swift", status: .modified, additions: 10, deletions: 2))
+        #expect(changes[1].status == .added)
+        #expect(changes[1].additions == 5)
+        #expect(changes[2].status == .deleted)
+        #expect(changes[2].deletions == 8)
+    }
+
+    @Test func readsCommitDiffWithFileChangesAndPatch() async throws {
+        let repo = makeFixtureRepo()   // README.md added in "fix CI" on main
+        defer { try? FileManager.default.removeItem(at: repo) }
+        try! "hello world\nmore\n".write(to: repo.appendingPathComponent("README.md"),
+                                         atomically: true, encoding: .utf8)
+        git(["add", "."], in: repo)
+        git(["commit", "-m", "update readme"], in: repo)
+        let head = git(["rev-parse", "HEAD"], in: repo)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let diff = try await GitCLIService().diff(forCommit: head, in: repo)
+
+        #expect(diff.sha == head)
+        let file = try #require(diff.files.first { $0.path == "README.md" })
+        #expect(file.status == .modified)
+        #expect(file.additions >= 1)
+        #expect(diff.patch.contains("README.md"))
     }
 }
