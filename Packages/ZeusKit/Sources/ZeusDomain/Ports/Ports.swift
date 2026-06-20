@@ -29,6 +29,20 @@ public protocol GitReading: Sendable {
     func status(at url: URL) async throws -> GitStatus
 }
 
+/// Persists the scan index (SPEC §188) so cold start is instant and rescans are incremental
+/// (P3-D). The domain owns this contract; the GRDB/SQLite adapter (P3-D.2) implements it.
+/// Reconciliation logic stays pure in `IncrementalRescanPlanner` — this port is just I/O.
+public protocol RepositoryIndexStore: Sendable {
+    /// Every previously-indexed repo. Read once on cold start to paint the hub before rescanning.
+    func load() async throws -> [IndexEntry]
+
+    /// Insert-or-update the given entries by `path` (new repos + ones whose HEAD moved).
+    func upsert(_ entries: [IndexEntry]) async throws
+
+    /// Drop the index rows for these repo paths (repos that vanished from disk).
+    func remove(paths: [String]) async throws
+}
+
 /// Provides command autosuggestions for the right-arrow accept feature (#4).
 public protocol SuggestionProviding: Sendable {
     func suggestions(for input: String, cwd: URL) async -> [String]
