@@ -47,5 +47,6 @@ let package = Package(
         .testTarget(name: "ZeusScannerTests", dependencies: ["ZeusScanner"]),
         .testTarget(name: "ZeusTerminalTests", dependencies: ["ZeusTerminal"]),
         .testTarget(name: "ZeusSuggestTests", dependencies: ["ZeusSuggest"]),
+        .testTarget(name: "ZeusUITests", dependencies: ["ZeusUI"]),
     ]
 )
