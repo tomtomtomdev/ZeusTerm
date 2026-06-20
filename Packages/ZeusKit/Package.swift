@@ -15,6 +15,7 @@ let package = Package(
         .library(name: "ZeusDomain", targets: ["ZeusDomain"]),
         .library(name: "ZeusGit", targets: ["ZeusGit"]),
         .library(name: "ZeusScanner", targets: ["ZeusScanner"]),
+        .library(name: "ZeusIndex", targets: ["ZeusIndex"]),
         .library(name: "ZeusTerminal", targets: ["ZeusTerminal"]),
         .library(name: "ZeusSuggest", targets: ["ZeusSuggest"]),
         .library(name: "ZeusUI", targets: ["ZeusUI"]),
@@ -28,11 +29,21 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/migueldeicaza/SwiftTerm", from: "1.13.0"),
+        // GRDB → P3-D scan index (SPEC §167). Isolated in the ZeusIndex target so scanner/
+        // domain consumers don't transitively link SQLite (Common-Reuse Principle).
+        .package(url: "https://github.com/groue/GRDB.swift", from: "7.0.0"),
     ],
     targets: [
         .target(name: "ZeusDomain"),
         .target(name: "ZeusGit", dependencies: ["ZeusDomain"]),
         .target(name: "ZeusScanner", dependencies: ["ZeusDomain"]),
+        .target(
+            name: "ZeusIndex",
+            dependencies: [
+                "ZeusDomain",
+                .product(name: "GRDB", package: "GRDB.swift"),
+            ]
+        ),
         .target(
             name: "ZeusTerminal",
             dependencies: [
@@ -53,6 +64,7 @@ let package = Package(
         .testTarget(name: "ZeusDomainTests", dependencies: ["ZeusDomain"]),
         .testTarget(name: "ZeusGitTests", dependencies: ["ZeusGit"]),
         .testTarget(name: "ZeusScannerTests", dependencies: ["ZeusScanner"]),
+        .testTarget(name: "ZeusIndexTests", dependencies: ["ZeusIndex"]),
         .testTarget(name: "ZeusTerminalTests", dependencies: ["ZeusTerminal"]),
         .testTarget(name: "ZeusSuggestTests", dependencies: ["ZeusSuggest"]),
         .testTarget(name: "ZeusUITests", dependencies: ["ZeusUI"]),
