@@ -36,7 +36,7 @@ public struct ConstellationLayout: Sendable {
                     x: cluster.center.x + cos(angle) * radius,
                     y: cluster.center.y + sin(angle) * radius * 0.82)   // flatter look
                 let size = 6 + (i % 2 == 1 ? 2.5 : 0) + (i == 0 ? 3 : 0)
-                let star = StarNode(id: member.name, name: member.name, point: point,
+                let star = StarNode(id: member.id, name: member.name, point: point,
                                     size: size, status: member.status, isHub: false)
                 members.append(star)
                 stars.append(star)

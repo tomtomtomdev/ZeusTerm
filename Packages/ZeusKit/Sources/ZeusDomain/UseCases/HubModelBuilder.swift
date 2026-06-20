@@ -23,8 +23,8 @@ public struct HubModelBuilder: Sendable {
             guard let group = byType[type], !group.isEmpty else { return nil }
             let slot = Self.slot(for: type)
             let members = group
-                .sorted { $0.name < $1.name }
-                .map { MemberInput(name: $0.name, status: $0.status) }
+                .sorted { ($0.name, $0.id) < ($1.name, $1.id) }
+                .map { MemberInput(id: $0.id, name: $0.name, status: $0.status) }
             return ClusterInput(type: type.displayName, center: slot.center,
                                 spread: slot.spread, members: members)
         }

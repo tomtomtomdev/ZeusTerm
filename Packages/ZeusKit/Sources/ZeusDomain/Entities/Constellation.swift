@@ -46,9 +46,15 @@ public struct ClusterLabel: Sendable, Hashable {
 // MARK: - Hub inputs / output
 
 public struct MemberInput: Sendable, Hashable {
+    /// Stable identity (the repo's filesystem path for real scans) — distinct from the
+    /// display `name`, so two repos sharing a folder name don't collide as one star.
+    public var id: String
     public var name: String
     public var status: GitStatus
-    public init(name: String, status: GitStatus) { self.name = name; self.status = status }
+    /// `id` defaults to `name` for fixtures/tests where display names are already unique.
+    public init(id: String? = nil, name: String, status: GitStatus) {
+        self.id = id ?? name; self.name = name; self.status = status
+    }
 }
 
 public struct ClusterInput: Sendable, Hashable {

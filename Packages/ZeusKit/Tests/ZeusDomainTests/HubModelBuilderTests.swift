@@ -44,6 +44,19 @@ struct HubModelBuilderTests {
         #expect(model.clusters[0].members.map(\.name) == ["alpha", "zebra"])
     }
 
+    @Test func duplicateRepoNamesKeepDistinctMemberIdentities() {
+        // Real scans can surface two repos with the same folder name at different paths;
+        // their stable ids (paths) must flow through to the members so the hub renders both.
+        let model = HubModelBuilder().build(repos: [
+            ClassifiedRepo(id: "/work/a/api", name: "api", type: .backend, status: .clean),
+            ClassifiedRepo(id: "/work/b/api", name: "api", type: .backend, status: .dirty),
+        ])
+        let members = model.clusters[0].members
+        #expect(members.count == 2)
+        #expect(Set(members.map(\.id)).count == 2)              // distinct identities
+        #expect(members.allSatisfy { $0.name == "api" })        // same display name
+    }
+
     @Test func otherTypeGetsItsOwnCluster() {
         let model = HubModelBuilder().build(
             repos: [ClassifiedRepo(name: "junk", type: .other, status: .clean)])

@@ -50,6 +50,24 @@ struct ConstellationLayoutTests {
         #expect(again.stars == result.stars)
     }
 
+    @Test func distinctMemberIdsSurviveDuplicateDisplayNames() {
+        // Two repos named "api" in different folders must become two distinct stars —
+        // StarNode.id keys off the stable member id (path), not the display name, so
+        // SwiftUI ForEach doesn't collide.
+        let cluster = ClusterInput(
+            type: "Backend", center: StagePoint(x: 498, y: 118), spread: 82,
+            members: [
+                MemberInput(id: "/work/a/api", name: "api", status: .clean),
+                MemberInput(id: "/work/b/api", name: "api", status: .dirty),
+            ])
+        let result = ConstellationLayout().buildHub(clusters: [cluster], hub: hub())
+
+        let members = result.stars.filter { !$0.isHub }
+        #expect(members.map(\.id) == ["/work/a/api", "/work/b/api"])
+        #expect(members.map(\.name) == ["api", "api"])      // display name preserved
+        #expect(Set(members.map(\.id)).count == 2)          // no id collision
+    }
+
     @Test func connectsMembersInSequenceAndToHub() {
         let result = ConstellationLayout().buildHub(clusters: [backendCluster()], hub: hub())
 
