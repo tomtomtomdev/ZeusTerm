@@ -27,6 +27,11 @@ public protocol GitReading: Sendable {
     /// A single overall working-tree status for a repo — drives constellation node
     /// fill (P3, §7). One status per repo; see the adapter for the precedence rule.
     func status(at url: URL) async throws -> GitStatus
+
+    /// Current HEAD commit sha, or nil when HEAD points at no commit yet. Cheap
+    /// change-detection for the incremental rescan (P3-D): the planner compares this
+    /// against the cached `IndexEntry.headSHA` to decide reuse vs refresh.
+    func headSHA(at url: URL) async throws -> String?
 }
 
 /// Persists the scan index (SPEC §188) so cold start is instant and rescans are incremental

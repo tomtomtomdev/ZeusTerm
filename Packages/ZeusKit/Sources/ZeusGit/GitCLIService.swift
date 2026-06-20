@@ -52,6 +52,16 @@ public struct GitCLIService: GitReading {
         parseStatus(try runGit(["status", "--porcelain=v2", "--branch"], in: url))
     }
 
+    /// Current HEAD commit sha, or nil when HEAD resolves to nothing (a freshly `git init`'d
+    /// repo with no commits, or a non-repo path). `--verify` keeps stdout empty in those cases
+    /// instead of echoing the literal `HEAD`, so the nil maps cleanly. Cheap change-detection
+    /// for the incremental rescan (P3-D) — far lighter than a full `readRepository`.
+    public func headSHA(at url: URL) async throws -> String? {
+        let sha = try runGit(["rev-parse", "--verify", "HEAD"], in: url)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return sha.isEmpty ? nil : sha
+    }
+
     /// Collapses `git status --porcelain=v2 --branch` into one overall status.
     /// Precedence (most-actionable first): uncommitted tracked changes → `.dirty`,
     /// else new untracked files → `.untracked`, else local commits ahead of upstream

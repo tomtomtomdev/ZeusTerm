@@ -153,6 +153,29 @@ struct GitCLIServiceTests {
         #expect(page.map(\.summary) == ["fix CI"])
     }
 
+    // MARK: - HEAD sha read (P3-D.2: cheap change-detection for the incremental rescan)
+
+    @Test func headSHAMatchesRevParseForCommittedRepo() async throws {
+        let repo = makeFixtureRepo()
+        defer { try? FileManager.default.removeItem(at: repo) }
+        let expected = git(["rev-parse", "HEAD"], in: repo)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let sha = try await GitCLIService().headSHA(at: repo)
+
+        #expect(sha == expected)
+    }
+
+    @Test func headSHAIsNilForRepoWithNoCommits() async throws {
+        let repo = makeTempDir()
+        defer { try? FileManager.default.removeItem(at: repo) }
+        git(["init", "-b", "main"], in: repo)   // initialized, but HEAD points at no commit yet
+
+        let sha = try await GitCLIService().headSHA(at: repo)
+
+        #expect(sha == nil)
+    }
+
     @Test func parsesFileChangesFromNumstatAndNameStatus() {
         let numstat = "10\t2\tsrc/a.swift\n5\t0\tsrc/b.swift\n0\t8\tsrc/c.swift"
         let nameStatus = "M\tsrc/a.swift\nA\tsrc/b.swift\nD\tsrc/c.swift"

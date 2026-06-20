@@ -29,6 +29,7 @@ struct HubDataLoaderTests {
             fatalError("unused")
         }
         func diff(forCommit sha: String, in repo: URL) async throws -> CommitDiff { fatalError("unused") }
+        func headSHA(at url: URL) async throws -> String? { fatalError("unused") }
     }
 
     private enum StubError: Error { case statusUnavailable }
