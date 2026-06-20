@@ -21,6 +21,10 @@ let package = Package(
         // S1 spike harness — a tiny throwaway GUI app that embeds a live PTY.
         // `swift run S1TerminalSpike` to prove SwiftTerm reflow + truecolor (SPEC §4).
         .executable(name: "S1TerminalSpike", targets: ["S1TerminalSpike"]),
+        // P4 zoom-feel harness (roadmap item A.5) — shows the full ConstellationShell so the
+        // powers-of-ten zoom can be felt/tuned by eye. `swift run ZoomSpike`. (Distinct from
+        // SPEC §4's "S2 = right-arrow accept" spike; this one is about the §7 zoom motion.)
+        .executable(name: "ZoomSpike", targets: ["ZoomSpike"]),
     ],
     dependencies: [
         .package(url: "https://github.com/migueldeicaza/SwiftTerm", from: "1.13.0"),
@@ -41,6 +45,10 @@ let package = Package(
         .executableTarget(
             name: "S1TerminalSpike",
             dependencies: ["ZeusTerminal", "ZeusUI"]
+        ),
+        .executableTarget(
+            name: "ZoomSpike",
+            dependencies: ["ZeusUI", "ZeusTerminal"]
         ),
         .testTarget(name: "ZeusDomainTests", dependencies: ["ZeusDomain"]),
         .testTarget(name: "ZeusGitTests", dependencies: ["ZeusGit"]),
