@@ -4,53 +4,25 @@
 //
 //  Created by tomtomtom on 6/19/26.
 //
-//  P0 shell: a three-pane window (project rail | repo tree | terminal).
-//  NOTE: this mirrors ZeusUI.AppShellView in pure SwiftUI until the ZeusKit local
-//  package is added to this target (Xcode ▸ File ▸ Add Package Dependencies ▸ Add Local
-//  ▸ Packages/ZeusKit). After wiring, replace this body with `AppShellView()`.
+//  The app's root: the ZeusTerm constellation (SPEC §7), driven by ZeusUI's ConstellationShell
+//  over the sample data, with a live PTY (ZeusTerminal) embedded in the bottom panel. The app is
+//  non-sandboxed (SPEC §8) so the embedded login shell can reach the filesystem.
 
 import SwiftUI
+import ZeusUI
+import ZeusTerminal
 
 struct ContentView: View {
     var body: some View {
-        NavigationSplitView {
-            List {
-                Label("Zeus", systemImage: "bolt.fill")
-            }
-            .navigationTitle("Projects")
-            .frame(minWidth: 200)
-        } content: {
-            List {
-                Text("Repo → Worktree → Branch → Commits")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
-            .navigationTitle("Tree")
-            .frame(minWidth: 280)
-        } detail: {
-            ZStack {
-                LinearGradient(
-                    colors: [Color(red: 0.06, green: 0.13, blue: 0.15),
-                             Color(red: 0.11, green: 0.71, blue: 0.88)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
-
-                VStack(spacing: 8) {
-                    Image(systemName: "terminal")
-                        .font(.system(size: 40))
-                    Text("Terminal")
-                        .font(.title2.weight(.semibold))
-                }
-                .foregroundStyle(.white)
-            }
-            .navigationTitle("Terminal")
+        ConstellationShell(theme: .dark) {
+            TerminalEmulatorView(workingDirectory: FileManager.default.homeDirectoryForCurrentUser)
         }
+        .frame(minWidth: 1100, minHeight: 720)
     }
 }
 
 #Preview {
-    ContentView()
-        .frame(width: 900, height: 600)
+    // Placeholder terminal keeps the preview lightweight (no live PTY).
+    ConstellationShell(theme: .dark)
+        .frame(width: 1040, height: 720)
 }

@@ -14,5 +14,9 @@ xcuserdata/
 .swiftpm/
 Package.resolved
 
+# Code coverage artifacts
+*.profraw
+*.profdata
+
 # Claude Code — personal/local overrides only (the committed settings.json is shared)
 .claude/settings.local.json

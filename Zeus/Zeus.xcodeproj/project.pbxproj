@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		2BDDFD162FE66775001BF04B /* ZeusTerminal in Frameworks */ = {isa = PBXBuildFile; productRef = 2BDDFD152FE66775001BF04B /* ZeusTerminal */; };
+		2BDDFD182FE66775001BF04B /* ZeusUI in Frameworks */ = {isa = PBXBuildFile; productRef = 2BDDFD172FE66775001BF04B /* ZeusUI */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		2B02F10F2FE58A6900D07FB4 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +57,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2BDDFD162FE66775001BF04B /* ZeusTerminal in Frameworks */,
+				2BDDFD182FE66775001BF04B /* ZeusUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +119,8 @@
 			);
 			name = Zeus;
 			packageProductDependencies = (
+				2BDDFD152FE66775001BF04B /* ZeusTerminal */,
+				2BDDFD172FE66775001BF04B /* ZeusUI */,
 			);
 			productName = Zeus;
 			productReference = 2B02F1012FE58A6800D07FB4 /* Zeus.app */;
@@ -195,6 +204,9 @@
 			);
 			mainGroup = 2B02F0F82FE58A6800D07FB4;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				2BDDFD142FE66775001BF04B /* XCLocalSwiftPackageReference "../Packages/ZeusKit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2B02F1022FE58A6800D07FB4 /* Products */;
 			projectDirPath = "";
@@ -395,7 +407,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -425,7 +437,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -563,6 +575,24 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		2BDDFD142FE66775001BF04B /* XCLocalSwiftPackageReference "../Packages/ZeusKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../Packages/ZeusKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		2BDDFD152FE66775001BF04B /* ZeusTerminal */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ZeusTerminal;
+		};
+		2BDDFD172FE66775001BF04B /* ZeusUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ZeusUI;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 2B02F0F92FE58A6800D07FB4 /* Project object */;
 }

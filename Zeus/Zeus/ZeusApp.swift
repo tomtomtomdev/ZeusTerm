@@ -13,5 +13,6 @@ struct ZeusApp: App {
         WindowGroup {
             ContentView()
         }
+        .defaultSize(width: 1320, height: 860)
     }
 }
