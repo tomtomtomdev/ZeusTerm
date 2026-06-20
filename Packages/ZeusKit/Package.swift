@@ -64,7 +64,14 @@ let package = Package(
         .testTarget(name: "ZeusDomainTests", dependencies: ["ZeusDomain"]),
         .testTarget(name: "ZeusGitTests", dependencies: ["ZeusGit"]),
         .testTarget(name: "ZeusScannerTests", dependencies: ["ZeusScanner"]),
-        .testTarget(name: "ZeusIndexTests", dependencies: ["ZeusIndex"]),
+        .testTarget(
+            name: "ZeusIndexTests",
+            dependencies: [
+                "ZeusIndex",
+                // Direct GRDB dep so the migration test can write a pre-migration (legacy) schema.
+                .product(name: "GRDB", package: "GRDB.swift"),
+            ]
+        ),
         .testTarget(name: "ZeusTerminalTests", dependencies: ["ZeusTerminal"]),
         .testTarget(name: "ZeusSuggestTests", dependencies: ["ZeusSuggest"]),
         .testTarget(name: "ZeusUITests", dependencies: ["ZeusUI"]),
