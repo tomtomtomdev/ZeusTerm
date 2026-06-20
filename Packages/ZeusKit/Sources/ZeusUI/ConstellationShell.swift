@@ -8,14 +8,19 @@ import ZeusDomain
 public struct ConstellationShell<TerminalContent: View>: View {
     @State private var store: NavigationStore
     @State private var theme: Theme
+    /// nil in previews / the ZoomSpike harness (Hub falls back to `SampleConstellationData`);
+    /// the app injects a real one so the Hub renders the live scan.
+    @State private var hubData: HubDataStore?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let terminalContent: TerminalContent
 
     public init(theme: Theme = .dark,
                 store: NavigationStore = NavigationStore(),
+                hubData: HubDataStore? = nil,
                 @ViewBuilder terminalContent: () -> TerminalContent) {
         _store = State(initialValue: store)
         _theme = State(initialValue: theme)
+        _hubData = State(initialValue: hubData)
         self.terminalContent = terminalContent()
     }
 
@@ -37,8 +42,19 @@ public struct ConstellationShell<TerminalContent: View>: View {
         }
         .background(theme.appBackground)
         .task { store.setReduceMotion(reduceMotion) }
+        .task { await hubData?.load() }
         .onChange(of: reduceMotion) { _, now in store.setReduceMotion(now) }
     }
+
+    /// Hub source: the live scan once loaded, an empty hub while scanning, and the sample
+    /// fixture when no real store is injected (previews / ZoomSpike).
+    private var displayHub: ConstellationHub {
+        if let hubData { return hubData.hub ?? HubFallback.loading }
+        return SampleConstellationData.hub
+    }
+
+    /// True while a real store is injected and its first scan hasn't completed.
+    private var isScanning: Bool { hubData != nil && hubData?.hub == nil }
 
     // MARK: Canvas (zoom stage + floating Back pill)
 
@@ -55,6 +71,11 @@ public struct ConstellationShell<TerminalContent: View>: View {
                 BackPill(theme: theme) { store.dispatch(.back) }
                     .padding(14)
             }
+
+            if isScanning {
+                ScanningIndicator(theme: theme)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
@@ -63,7 +84,7 @@ public struct ConstellationShell<TerminalContent: View>: View {
     @ViewBuilder private var stageContent: some View {
         switch store.state.view {
         case .hub:
-            HubLevelView(hub: SampleConstellationData.hub, theme: theme) { star in
+            HubLevelView(hub: displayHub, theme: theme) { star in
                 store.dispatch(.dive(to: .work, focal: star.point,
                                      context: DiveContext(project: star.name)))
             }
@@ -228,6 +249,36 @@ struct BackPill: View {
         .background(.ultraThinMaterial, in: Capsule())
         .overlay(Capsule().stroke(theme.accentSoft, lineWidth: 1))
         .accessibilityLabel("Back")
+    }
+}
+
+// MARK: - Hub fallback (non-generic: generic types can't hold stored statics)
+
+private enum HubFallback {
+    /// Just the central "All Projects" star — shown under the scanning indicator before results land.
+    static let loading = ConstellationLayout().buildHub(
+        clusters: [], hub: HubInput(name: "All Projects", center: StagePoint(x: 512, y: 252)))
+}
+
+// MARK: - Scanning indicator (shown over the empty hub during the first live scan)
+
+struct ScanningIndicator: View {
+    let theme: Theme
+
+    var body: some View {
+        VStack(spacing: 10) {
+            ProgressView()
+                .controlSize(.small)
+                .tint(theme.textMid)
+            Text("Scanning projects…")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(theme.textMid)
+        }
+        .padding(.horizontal, 18).padding(.vertical, 14)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(theme.accentSoft, lineWidth: 1))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Scanning projects")
     }
 }
 

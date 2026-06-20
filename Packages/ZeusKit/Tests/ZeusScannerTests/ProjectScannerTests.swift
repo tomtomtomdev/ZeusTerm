@@ -43,4 +43,21 @@ struct ProjectScannerTests {
         // Does not descend: nested children are not surfaced.
         #expect(!entries.contains("main.swift"))
     }
+
+    @Test func defaultDevRootsKeepsOnlyExistingSpecFolders() throws {
+        let fm = FileManager.default
+        let home = fm.temporaryDirectory.appendingPathComponent("zeus-home-\(UUID().uuidString)")
+        defer { try? fm.removeItem(at: home) }
+        // Only two of the SPEC §2.1 dev roots actually exist under this home.
+        try fm.createDirectory(at: home.appendingPathComponent("Developer"),
+                               withIntermediateDirectories: true)
+        try fm.createDirectory(at: home.appendingPathComponent("Code"),
+                               withIntermediateDirectories: true)
+
+        let roots = ProjectScanner.defaultDevRoots(home: home, fileManager: fm)
+
+        #expect(Set(roots.map(\.lastPathComponent)) == ["Developer", "Code"])
+        // Non-existent SPEC roots (Projects, src, work, git, Documents) are pruned.
+        #expect(!roots.contains { $0.lastPathComponent == "Projects" })
+    }
 }

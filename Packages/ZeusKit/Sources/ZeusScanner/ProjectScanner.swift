@@ -25,6 +25,24 @@ public struct ProjectScanner: ProjectScanning {
         Set(try FileManager.default.contentsOfDirectory(atPath: repo.path))
     }
 
+    /// SPEC §2.1 default discovery roots under `home`, keeping only the ones that exist as
+    /// directories (so the walk never errors on a missing folder). `home`/`fileManager` are
+    /// injected for testability; the app calls it with the real home.
+    public static func defaultDevRoots(
+        home: URL = FileManager.default.homeDirectoryForCurrentUser,
+        fileManager: FileManager = .default
+    ) -> [URL] {
+        let names = ["Developer", "Projects", "Code", "src", "work", "git", "Documents"]
+        return names.compactMap { name in
+            let url = home.appendingPathComponent(name, isDirectory: true)
+            var isDir: ObjCBool = false
+            guard fileManager.fileExists(atPath: url.path, isDirectory: &isDir), isDir.boolValue else {
+                return nil
+            }
+            return url
+        }
+    }
+
     private func walk(_ roots: [URL]) -> [URL] {
         let fm = FileManager.default
         var found: [URL] = []
