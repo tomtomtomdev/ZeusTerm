@@ -9,6 +9,9 @@
 /* Begin PBXBuildFile section */
 		2BDDFD162FE66775001BF04B /* ZeusTerminal in Frameworks */ = {isa = PBXBuildFile; productRef = 2BDDFD152FE66775001BF04B /* ZeusTerminal */; };
 		2BDDFD182FE66775001BF04B /* ZeusUI in Frameworks */ = {isa = PBXBuildFile; productRef = 2BDDFD172FE66775001BF04B /* ZeusUI */; };
+		2BDDFD1A2FE66775001BF04B /* ZeusScanner in Frameworks */ = {isa = PBXBuildFile; productRef = 2BDDFD192FE66775001BF04B /* ZeusScanner */; };
+		2BDDFD1C2FE66775001BF04B /* ZeusGit in Frameworks */ = {isa = PBXBuildFile; productRef = 2BDDFD1B2FE66775001BF04B /* ZeusGit */; };
+		2BDDFD1E2FE66775001BF04B /* ZeusDomain in Frameworks */ = {isa = PBXBuildFile; productRef = 2BDDFD1D2FE66775001BF04B /* ZeusDomain */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -59,6 +62,9 @@
 			files = (
 				2BDDFD162FE66775001BF04B /* ZeusTerminal in Frameworks */,
 				2BDDFD182FE66775001BF04B /* ZeusUI in Frameworks */,
+				2BDDFD1A2FE66775001BF04B /* ZeusScanner in Frameworks */,
+				2BDDFD1C2FE66775001BF04B /* ZeusGit in Frameworks */,
+				2BDDFD1E2FE66775001BF04B /* ZeusDomain in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -121,6 +127,9 @@
 			packageProductDependencies = (
 				2BDDFD152FE66775001BF04B /* ZeusTerminal */,
 				2BDDFD172FE66775001BF04B /* ZeusUI */,
+				2BDDFD192FE66775001BF04B /* ZeusScanner */,
+				2BDDFD1B2FE66775001BF04B /* ZeusGit */,
+				2BDDFD1D2FE66775001BF04B /* ZeusDomain */,
 			);
 			productName = Zeus;
 			productReference = 2B02F1012FE58A6800D07FB4 /* Zeus.app */;
@@ -591,6 +600,18 @@
 		2BDDFD172FE66775001BF04B /* ZeusUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ZeusUI;
+		};
+		2BDDFD192FE66775001BF04B /* ZeusScanner */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ZeusScanner;
+		};
+		2BDDFD1B2FE66775001BF04B /* ZeusGit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ZeusGit;
+		};
+		2BDDFD1D2FE66775001BF04B /* ZeusDomain */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ZeusDomain;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
