@@ -35,8 +35,8 @@ public final class HubDataStore {
             let model = try await loader.load(roots: roots)
             hub = layout.buildHub(clusters: model.clusters, hub: model.hub)
         } catch {
-            hub = layout.buildHub(clusters: [], hub: HubInput(name: "All Projects",
-                                                              center: StagePoint(x: 512, y: 252)))
+            hub = layout.buildHub(clusters: [], hub: HubInput(name: HubGeometry.hubName,
+                                                              center: HubGeometry.center))
         }
     }
 }

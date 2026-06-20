@@ -257,7 +257,7 @@ struct BackPill: View {
 private enum HubFallback {
     /// Just the central "All Projects" star — shown under the scanning indicator before results land.
     static let loading = ConstellationLayout().buildHub(
-        clusters: [], hub: HubInput(name: "All Projects", center: StagePoint(x: 512, y: 252)))
+        clusters: [], hub: HubInput(name: HubGeometry.hubName, center: HubGeometry.center))
 }
 
 // MARK: - Scanning indicator (shown over the empty hub during the first live scan)

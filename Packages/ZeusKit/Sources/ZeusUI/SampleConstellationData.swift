@@ -12,39 +12,47 @@ public enum SampleConstellationData {
 
     // MARK: - Hub level inputs
 
-    public static let hubInput = HubInput(name: "tuntun-mono", center: StagePoint(x: 512, y: 252))
+    public static let hubInput = HubInput(name: "tuntun-mono", center: HubGeometry.center)
+
+    /// Builds a sample cluster at its canonical `HubGeometry` slot — center/spread come from the
+    /// single source of truth, so the sample can't drift from the real `HubModelBuilder` layout.
+    private static func cluster(_ type: RepoType, _ members: [MemberInput]) -> ClusterInput {
+        let slot = HubGeometry.slot(for: type)
+        return ClusterInput(type: type.displayName, center: slot.center,
+                            spread: slot.spread, members: members)
+    }
 
     public static let clusters: [ClusterInput] = [
-        ClusterInput(type: "Frontend", center: StagePoint(x: 205, y: 148), spread: 70, members: [
+        cluster(.frontend, [
             MemberInput(name: "tuntun-web", status: .ahead),
             MemberInput(name: "checkout-ui", status: .dirty),
             MemberInput(name: "design-system", status: .clean),
             MemberInput(name: "admin-portal", status: .clean),
             MemberInput(name: "marketing-site", status: .behind),
         ]),
-        ClusterInput(type: "Backend", center: StagePoint(x: 498, y: 118), spread: 82, members: [
+        cluster(.backend, [
             MemberInput(name: "tuntun-api", status: .dirty),
             MemberInput(name: "payments-svc", status: .clean),
             MemberInput(name: "auth-gateway", status: .ahead),
             MemberInput(name: "ledger-go", status: .clean),
             MemberInput(name: "notif-worker", status: .untracked),
         ]),
-        ClusterInput(type: "iOS", center: StagePoint(x: 788, y: 158), spread: 56, members: [
+        cluster(.ios, [
             MemberInput(name: "Tuntun-iOS", status: .clean),
             MemberInput(name: "WalletKit", status: .dirty),
             MemberInput(name: "ScanSDK", status: .clean),
         ]),
-        ClusterInput(type: "macOS", center: StagePoint(x: 862, y: 342), spread: 52, members: [
+        cluster(.macos, [
             MemberInput(name: "ZeusTerm", status: .dirty),
             MemberInput(name: "MenuBarX", status: .clean),
             MemberInput(name: "ColorPick", status: .ahead),
         ]),
-        ClusterInput(type: "Mobile", center: StagePoint(x: 608, y: 408), spread: 58, members: [
+        cluster(.mobile, [
             MemberInput(name: "tuntun-flutter", status: .behind),
             MemberInput(name: "driver-rn", status: .clean),
             MemberInput(name: "kiosk-app", status: .dirty),
         ]),
-        ClusterInput(type: "Scripts", center: StagePoint(x: 218, y: 392), spread: 64, members: [
+        cluster(.scripts, [
             MemberInput(name: "dotfiles", status: .clean),
             MemberInput(name: "deploy-kit", status: .clean),
             MemberInput(name: "db-migrate", status: .untracked),
