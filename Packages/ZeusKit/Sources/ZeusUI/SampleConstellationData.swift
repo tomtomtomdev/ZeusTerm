@@ -105,6 +105,41 @@ public enum SampleConstellationData {
         GraphCommit(sha: "5512ee", summary: "redis ttl bug",       branch: "cache",   parents: ["c0d4aa"]),
     ]
 
+    // MARK: - Sample diffs for the Changes panel (visual-only until git diff feeds it)
+
+    private static let diffs: [String: CommitDiff] = [
+        "12ab9c": CommitDiff(sha: "12ab9c", files: [
+            FileChange(path: "Sources/Session/SessionStore.swift", status: .modified, additions: 38, deletions: 12),
+            FileChange(path: "Sources/Session/TokenCache.swift", status: .added, additions: 64, deletions: 0),
+            FileChange(path: "Tests/SessionStoreTests.swift", status: .modified, additions: 21, deletions: 4),
+        ], patch: """
+        diff --git a/Sources/Session/SessionStore.swift b/Sources/Session/SessionStore.swift
+        @@ -18,7 +18,9 @@ final class SessionStore {
+             func refresh() async throws {
+        -        let token = try await api.token()
+        +        let token = try await cache.token(or: api.token)
+        +        cache.store(token)
+                 self.current = token
+             }
+        """),
+        "aa55fe": CommitDiff(sha: "aa55fe", files: [
+            FileChange(path: "Sources/Auth/OAuthFlow.swift", status: .added, additions: 142, deletions: 0),
+            FileChange(path: "Sources/Auth/Keychain.swift", status: .modified, additions: 9, deletions: 3),
+        ], patch: """
+        diff --git a/Sources/Auth/OAuthFlow.swift b/Sources/Auth/OAuthFlow.swift
+        @@ -0,0 +1,4 @@
+        +struct OAuthFlow {
+        +    let pkce: PKCEChallenge
+        +    func authorize() async throws -> AuthCode { ... }
+        +}
+        """),
+    ]
+
+    /// The changed files + patch for a commit; an empty (no-change) diff for unknown shas.
+    public static func diff(forSHA sha: String) -> CommitDiff {
+        diffs[sha] ?? CommitDiff(sha: sha, files: [], patch: "")
+    }
+
     // MARK: - Laid-out levels (fixtures → pure use cases)
 
     public static var hub: ConstellationHub {
@@ -116,6 +151,9 @@ public enum SampleConstellationData {
     }
 
     public static var tree: ConstellationTree {
-        CommitGraphLayout().buildTree(commits: commits, lanes: lanes, head: headSHA)
+        // Compress the rows so all 12 topological ranks fit inside the 540px stage (the layout's
+        // 80px default would push the oldest commits below the stage and clip them).
+        CommitGraphLayout().buildTree(commits: commits, lanes: lanes, head: headSHA,
+                                      rowHeight: 40, topY: 50)
     }
 }

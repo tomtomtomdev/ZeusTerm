@@ -48,6 +48,14 @@ struct SampleConstellationDataTests {
         #expect(oldest?.id == "a1f3c9")
     }
 
+    // Regression: the whole commit graph must fit inside the 1040×540 stage, or the deeper
+    // commits render below the stage and get clipped (the layout's default 80px rows overflow).
+    @Test func treeFitsWithinTheStageBounds() {
+        let tree = SampleConstellationData.tree
+        #expect(tree.nodes.allSatisfy { (0...StageGeometry.height).contains($0.point.y) })
+        #expect(tree.nodes.allSatisfy { (0...StageGeometry.width).contains($0.point.x) })
+    }
+
     @Test func commitParentsDriveTopologicalRank() {
         let tree = SampleConstellationData.tree
         #expect(node("a1f3c9", in: tree).rank == 0)                              // init monorepo = root
@@ -61,5 +69,20 @@ struct SampleConstellationDataTests {
         #expect(SampleConstellationData.projectName == "tuntun-api")
         #expect(SampleConstellationData.headSHA == "12ab9c")
         #expect(SampleConstellationData.lanes["develop"] == 580)
+    }
+
+    // The Changes panel needs a diff for whichever commit is selected; sample data carries a
+    // representative diff for known commits and an empty (no-change) diff for the rest.
+    @Test func diffLookupReturnsTheCommitsChangedFiles() {
+        let diff = SampleConstellationData.diff(forSHA: "12ab9c")
+        #expect(diff.sha == "12ab9c")
+        #expect(!diff.files.isEmpty)
+        #expect(!diff.patch.isEmpty)
+    }
+
+    @Test func diffLookupFallsBackToAnEmptyDiffForUnknownCommits() {
+        let diff = SampleConstellationData.diff(forSHA: "deadbe")
+        #expect(diff.sha == "deadbe")
+        #expect(diff.files.isEmpty)
     }
 }
