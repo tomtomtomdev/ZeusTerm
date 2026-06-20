@@ -27,16 +27,29 @@ public final class HubDataStore {
         self.layout = layout
     }
 
-    /// Scans + classifies the roots and lays out the hub. A failed scan (e.g. Full Disk Access
-    /// denied on first run) publishes an empty hub — just the central star — so the view's
-    /// scanning indicator clears instead of spinning forever.
+    /// Two-phase load (P3-D.2c): first paint the hub instantly from the persisted index, then
+    /// reconcile against disk and republish. A failed reconcile keeps the cached paint if there
+    /// is one; with nothing cached (e.g. first run / Full Disk Access denied) it publishes an
+    /// empty hub — just the central star — so the scanning indicator clears instead of spinning.
     public func load() async {
-        do {
-            let model = try await loader.load(roots: roots)
-            hub = layout.buildHub(clusters: model.clusters, hub: model.hub)
-        } catch {
-            hub = layout.buildHub(clusters: [], hub: HubInput(name: HubGeometry.hubName,
-                                                              center: HubGeometry.center))
+        if let cached = await loader.cachedHub() {
+            publish(cached)
         }
+        do {
+            publish(try await loader.rescan(roots: roots))
+        } catch {
+            if hub == nil { publish(.empty) }
+        }
+    }
+
+    private func publish(_ model: HubModel) {
+        hub = layout.buildHub(clusters: model.clusters, hub: model.hub)
+    }
+}
+
+private extension HubModel {
+    /// Just the central star — the neutral hub shown when there's nothing to display yet.
+    static var empty: HubModel {
+        HubModel(clusters: [], hub: HubInput(name: HubGeometry.hubName, center: HubGeometry.center))
     }
 }
