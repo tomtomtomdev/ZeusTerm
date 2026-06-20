@@ -48,8 +48,10 @@ struct CommitDot: View {
 // MARK: - Stage container — fits the 1040×540 stage and applies the live zoom transform
 
 /// Centers the fixed-size stage in the available canvas and applies the phase-driven zoom
-/// (scale about the focal node + fade). Exact per-phase easing/durations are refined in the
-/// S2ZoomSpike / `/verify`; the reducer already pins the state transitions.
+/// (scale about the focal node + fade). Each phase animates with its OWN curve (SPEC §7) — and
+/// the `enter` phase is an INSTANT set so the incoming level snaps pre-scaled to the focal node
+/// and then unfolds during `idle`. Sharing one animation across all phases animated the
+/// leave→enter scale jump, which made dive-in expand from the wrong spot.
 struct ConstellationStage<Content: View>: View {
     let presenter: ConstellationPresenter
     @ViewBuilder var content: Content
@@ -61,12 +63,18 @@ struct ConstellationStage<Content: View>: View {
                 .frame(width: StageGeometry.width, height: StageGeometry.height)
                 .scaleEffect(presenter.transition.scale, anchor: presenter.transitionAnchor)
                 .opacity(presenter.transition.opacity)
-                .animation(presenter.state.reduceMotion ? nil
-                           : .timingCurve(0.16, 1, 0.3, 1, duration: 0.5),
-                           value: presenter.state.phase)
+                .animation(stageAnimation, value: presenter.state.phase)
                 .scaleEffect(fit)
                 .frame(width: geo.size.width, height: geo.size.height)
         }
+    }
+
+    /// The animation for arriving into the current phase — `nil` (instant) for `enter` and under
+    /// Reduce Motion; otherwise the phase's cubic-bézier curve from the pure `StageMotion` policy.
+    private var stageAnimation: Animation? {
+        guard !presenter.state.reduceMotion,
+              let m = StageMotion.arriving(at: presenter.state.phase) else { return nil }
+        return .timingCurve(m.easing.c1x, m.easing.c1y, m.easing.c2x, m.easing.c2y, duration: m.duration)
     }
 }
 
