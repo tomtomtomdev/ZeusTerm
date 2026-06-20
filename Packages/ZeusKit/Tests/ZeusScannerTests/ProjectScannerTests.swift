@@ -22,4 +22,25 @@ struct ProjectScannerTests {
         #expect(found.map(\.lastPathComponent).contains("myrepo"))
         #expect(!found.contains { $0.path.contains("node_modules") })
     }
+
+    @Test func listsRootEntryNamesForClassification() throws {
+        let fm = FileManager.default
+        let repo = fm.temporaryDirectory.appendingPathComponent("zeus-entries-\(UUID().uuidString)")
+        defer { try? fm.removeItem(at: repo) }
+        try fm.createDirectory(at: repo.appendingPathComponent(".git"),
+                               withIntermediateDirectories: true)
+        try fm.createDirectory(at: repo.appendingPathComponent("Sources"),
+                               withIntermediateDirectories: true)
+        try "{}".write(to: repo.appendingPathComponent("package.json"),
+                       atomically: true, encoding: .utf8)
+
+        let entries = try ProjectScanner().rootEntryNames(at: repo)
+
+        // Shallow listing of the repo root — the marker names RepoClassifier matches on.
+        #expect(entries.contains("package.json"))
+        #expect(entries.contains("Sources"))
+        #expect(entries.contains(".git"))
+        // Does not descend: nested children are not surfaced.
+        #expect(!entries.contains("main.swift"))
+    }
 }

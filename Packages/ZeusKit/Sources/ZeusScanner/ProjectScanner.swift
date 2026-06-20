@@ -19,6 +19,12 @@ public struct ProjectScanner: ProjectScanning {
         walk(roots)
     }
 
+    public func rootEntryNames(at repo: URL) throws -> Set<String> {
+        // Shallow listing only — classification keys off top-level marker files, and
+        // descending would defeat the heavy-dir pruning the walk already paid for.
+        Set(try FileManager.default.contentsOfDirectory(atPath: repo.path))
+    }
+
     private func walk(_ roots: [URL]) -> [URL] {
         let fm = FileManager.default
         var found: [URL] = []

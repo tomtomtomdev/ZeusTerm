@@ -7,6 +7,10 @@ import Foundation
 public protocol ProjectScanning: Sendable {
     /// Returns directory URLs that contain a `.git` entry, under the given roots.
     func discoverRepositoryURLs(under roots: [URL]) async throws -> [URL]
+
+    /// Names of the direct children of a repo directory (a shallow, non-recursive
+    /// listing) — the marker files `RepoClassifier` matches on to type a repo (P3, §7).
+    func rootEntryNames(at repo: URL) throws -> Set<String>
 }
 
 /// Reads git model data for a repository (feature #2).
@@ -19,6 +23,10 @@ public protocol GitReading: Sendable {
 
     /// Changed files + unified diff for a commit — drives the branch-tree Changes panel (§7).
     func diff(forCommit sha: String, in repo: URL) async throws -> CommitDiff
+
+    /// A single overall working-tree status for a repo — drives constellation node
+    /// fill (P3, §7). One status per repo; see the adapter for the precedence rule.
+    func status(at url: URL) async throws -> GitStatus
 }
 
 /// Provides command autosuggestions for the right-arrow accept feature (#4).

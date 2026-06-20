@@ -48,6 +48,49 @@ public struct GitCLIService: GitReading {
                           patch: patch)
     }
 
+    public func status(at url: URL) async throws -> GitStatus {
+        parseStatus(try runGit(["status", "--porcelain=v2", "--branch"], in: url))
+    }
+
+    /// Collapses `git status --porcelain=v2 --branch` into one overall status.
+    /// Precedence (most-actionable first): uncommitted tracked changes → `.dirty`,
+    /// else new untracked files → `.untracked`, else local commits ahead of upstream
+    /// → `.ahead` (diverged counts as ahead), else `.behind`, else `.clean`.
+    /// In v2, `1`/`2` are changed/renamed tracked entries, `u` is unmerged, `?` is
+    /// untracked, and `# branch.ab +A -B` carries the ahead/behind counts.
+    func parseStatus(_ output: String) -> GitStatus {
+        var ahead = 0, behind = 0
+        var hasTrackedChanges = false
+        var hasUntracked = false
+
+        for raw in output.split(separator: "\n", omittingEmptySubsequences: true) {
+            let line = String(raw)
+            if line.hasPrefix("# branch.ab ") {
+                (ahead, behind) = parseAheadBehind(line)
+            } else if line.hasPrefix("1 ") || line.hasPrefix("2 ") || line.hasPrefix("u ") {
+                hasTrackedChanges = true
+            } else if line.hasPrefix("? ") {
+                hasUntracked = true
+            }
+        }
+
+        if hasTrackedChanges { return .dirty }
+        if hasUntracked { return .untracked }
+        if ahead > 0 { return .ahead }
+        if behind > 0 { return .behind }
+        return .clean
+    }
+
+    /// Extracts the counts from a `# branch.ab +A -B` line (signed tokens, any order).
+    private func parseAheadBehind(_ line: String) -> (ahead: Int, behind: Int) {
+        var ahead = 0, behind = 0
+        for token in line.split(separator: " ") {
+            if token.hasPrefix("+") { ahead = Int(token.dropFirst()) ?? 0 }
+            else if token.hasPrefix("-") { behind = Int(token.dropFirst()) ?? 0 }
+        }
+        return (ahead, behind)
+    }
+
     /// Joins `git show --numstat` (line counts) with `--name-status` (A/M/D) by path,
     /// preserving numstat order. Binary `-` counts become 0; renames map to the new path.
     func parseFileChanges(numstat: String, nameStatus: String) -> [FileChange] {

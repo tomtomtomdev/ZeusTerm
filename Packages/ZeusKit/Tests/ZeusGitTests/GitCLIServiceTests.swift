@@ -166,6 +166,94 @@ struct GitCLIServiceTests {
         #expect(changes[2].deletions == 8)
     }
 
+    // MARK: - Overall status parsing (git status --porcelain=v2 --branch)
+
+    @Test func parsesStatusDirtyWhenTrackedFilesChanged() {
+        let sample = """
+        # branch.oid abc123
+        # branch.head main
+        1 .M N... 100644 100644 100644 aaa bbb file.txt
+        """
+        #expect(GitCLIService().parseStatus(sample) == .dirty)
+    }
+
+    @Test func parsesStatusUntrackedWhenOnlyUntrackedFiles() {
+        let sample = """
+        # branch.head main
+        ? newfile.txt
+        """
+        #expect(GitCLIService().parseStatus(sample) == .untracked)
+    }
+
+    @Test func parsesStatusAheadWhenCleanButAheadOfUpstream() {
+        let sample = """
+        # branch.head main
+        # branch.upstream origin/main
+        # branch.ab +2 -0
+        """
+        #expect(GitCLIService().parseStatus(sample) == .ahead)
+    }
+
+    @Test func parsesStatusBehindWhenCleanButBehindUpstream() {
+        let sample = """
+        # branch.head main
+        # branch.upstream origin/main
+        # branch.ab +0 -3
+        """
+        #expect(GitCLIService().parseStatus(sample) == .behind)
+    }
+
+    @Test func parsesStatusCleanWhenNothingPending() {
+        let sample = """
+        # branch.head main
+        # branch.upstream origin/main
+        # branch.ab +0 -0
+        """
+        #expect(GitCLIService().parseStatus(sample) == .clean)
+    }
+
+    @Test func statusPrecedenceFavorsDirtyOverUntrackedAndAhead() {
+        let sample = """
+        # branch.ab +5 -1
+        1 .M N... 100644 100644 100644 aaa bbb file.txt
+        ? newfile.txt
+        """
+        #expect(GitCLIService().parseStatus(sample) == .dirty)
+    }
+
+    @Test func statusPrecedenceFavorsAheadOverBehindWhenDiverged() {
+        let sample = "# branch.ab +2 -3"
+        #expect(GitCLIService().parseStatus(sample) == .ahead)
+    }
+
+    @Test func readsCleanStatusForCommittedRepo() async throws {
+        let repo = makeFixtureRepo()
+        defer { try? FileManager.default.removeItem(at: repo) }
+
+        let status = try await GitCLIService().status(at: repo)
+        #expect(status == .clean)
+    }
+
+    @Test func readsDirtyStatusWhenTrackedFileModified() async throws {
+        let repo = makeFixtureRepo()       // README.md committed in "fix CI"
+        defer { try? FileManager.default.removeItem(at: repo) }
+        try! "changed".write(to: repo.appendingPathComponent("README.md"),
+                             atomically: true, encoding: .utf8)
+
+        let status = try await GitCLIService().status(at: repo)
+        #expect(status == .dirty)
+    }
+
+    @Test func readsUntrackedStatusWhenNewFileAdded() async throws {
+        let repo = makeFixtureRepo()
+        defer { try? FileManager.default.removeItem(at: repo) }
+        try! "new".write(to: repo.appendingPathComponent("NEW.md"),
+                         atomically: true, encoding: .utf8)
+
+        let status = try await GitCLIService().status(at: repo)
+        #expect(status == .untracked)
+    }
+
     @Test func readsCommitDiffWithFileChangesAndPatch() async throws {
         let repo = makeFixtureRepo()   // README.md added in "fix CI" on main
         defer { try? FileManager.default.removeItem(at: repo) }
