@@ -52,21 +52,44 @@ struct CommitDot: View {
 /// the `enter` phase is an INSTANT set so the incoming level snaps pre-scaled to the focal node
 /// and then unfolds during `idle`. Sharing one animation across all phases animated the
 /// leave→enter scale jump, which made dive-in expand from the wrong spot.
+///
+/// The zoom **pivot snaps, it never tweens.** Prototype parity (Design/ZeusTerm-Live.dc.html lines
+/// 335/340/342): the CSS transitions only `transform` and `opacity` — `transform-origin` is never
+/// in the transition list. SwiftUI bundles the pivot into `scaleEffect(_:anchor:)`, so the shared
+/// `.animation(value: phase)` would interpolate the anchor across the cross-transition focal jump;
+/// diving into an off-center node then reads as a sideways PAN while zooming in. We mirror the
+/// prototype by holding the anchor in `@State` and committing it in a non-animated transaction, so
+/// only scale + opacity ride the phase curve.
 struct ConstellationStage<Content: View>: View {
     let presenter: ConstellationPresenter
     @ViewBuilder var content: Content
+
+    /// The live zoom pivot. Snapped (never animated) via `commitAnchor`; the default matches the
+    /// reducer's resting origin and is corrected on first appearance by the `initial` onChange.
+    @State private var anchor: UnitPoint = .center
 
     var body: some View {
         GeometryReader { geo in
             let fit = min(geo.size.width / StageGeometry.width, geo.size.height / StageGeometry.height)
             content
                 .frame(width: StageGeometry.width, height: StageGeometry.height)
-                .scaleEffect(presenter.transition.scale, anchor: presenter.transitionAnchor)
+                .scaleEffect(presenter.transition.scale, anchor: anchor)
                 .opacity(presenter.transition.opacity)
                 .animation(stageAnimation, value: presenter.state.phase)
                 .scaleEffect(fit)
                 .frame(width: geo.size.width, height: geo.size.height)
+                .onChange(of: presenter.transitionAnchor, initial: true) { _, pivot in
+                    commitAnchor(pivot)
+                }
         }
+    }
+
+    /// Snap the pivot with animation disabled — the SwiftUI equivalent of CSS not transitioning
+    /// `transform-origin`. The scale/opacity changes from the same phase update still animate.
+    private func commitAnchor(_ pivot: UnitPoint) {
+        var snap = Transaction()
+        snap.disablesAnimations = true
+        withTransaction(snap) { anchor = pivot }
     }
 
     /// The animation for arriving into the current phase — `nil` (instant) for `enter` and under

@@ -96,4 +96,31 @@ struct ConstellationPresenterTests {
         #expect(p.transition.opacity == 0)
         #expect(p.transitionAnchor == UnitPoint(x: 0.25, y: 0.25))  // the focal/leave origin
     }
+
+    // MARK: - Regression: the zoom pivots on ONE fixed focal node for the WHOLE transition
+    //
+    // The prototype (Design/ZeusTerm-Live.dc.html lines 335/340/342) transitions only `transform`
+    // and `opacity` — `transform-origin` is never in the transition list, so the pivot SNAPS. The
+    // reducer mirrors that by setting leaveOrigin == enterOrigin == focal, so a real dive's anchor
+    // is the SAME point in leave, enter, and the idle settle. If those ever diverge — or the view
+    // lets SwiftUI interpolate the `scaleEffect` anchor across the cross-transition focal jump —
+    // the dive reads as a sideways PAN while zooming in (ConstellationStage snaps the anchor to
+    // keep parity; this guards the pure contract that snap relies on).
+
+    @Test func diveAnchorStaysPinnedToOneFocalNodeAcrossEveryPhase() {
+        let focal = StagePoint(x: 832, y: 256)            // an OFF-CENTER repo star — worst case for drift
+        let idle = NavigationState(view: .hub, phase: .idle)
+
+        let leaving  = NavigationReducer.reduce(idle, .dive(to: .work, focal: focal, context: DiveContext()))
+        let entering = NavigationReducer.reduce(leaving, .phaseAdvance)
+        let settled  = NavigationReducer.reduce(entering, .phaseSettle)
+
+        let expected = StageGeometry.unitPoint(for: focal)
+        #expect(presenter(leaving).state.phase == .leave)
+        #expect(presenter(leaving).transitionAnchor == expected)
+        #expect(presenter(entering).state.phase == .enter)
+        #expect(presenter(entering).transitionAnchor == expected)
+        #expect(presenter(settled).state.phase == .idle)
+        #expect(presenter(settled).transitionAnchor == expected)
+    }
 }
