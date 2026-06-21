@@ -89,7 +89,7 @@ struct ConstellationLayoutTests {
             RingSpec(radius: 242, count: 3, angleOffset: 0.15),
         ]
         let worktrees = (0..<10).map { WorktreeInput(branch: "feature/\($0)", name: "wt\($0)", status: .clean) }
-        let result = ConstellationLayout().buildOrbits(center: center, worktrees: worktrees, rings: rings)
+        let result = ConstellationLayout().buildOrbits(center: center, name: "api", worktrees: worktrees, rings: rings)
 
         // 3 dashed ellipse rings, ry = rx × 0.72
         #expect(result.rings.map(\.rx) == [115, 180, 242])
@@ -111,5 +111,31 @@ struct ConstellationLayoutTests {
             let labelDist = hypot(sat.labelPoint.x - 512, sat.labelPoint.y - 256)
             #expect(labelDist > nodeDist)
         }
+    }
+
+    @Test func centersTheOrbitOnTheRepoCarryingItsNameAndMainWorktreeStatus() {
+        // The orbit center is the dived-into repo, not an anonymous dot: it carries the repo name
+        // and a status that mirrors the repo root — the main (first) worktree, the same working tree
+        // the Hub colors that repo's star by.
+        let center = StagePoint(x: 512, y: 256)
+        let worktrees = [
+            WorktreeInput(branch: "main", name: "api", status: .dirty),       // main worktree → repo root
+            WorktreeInput(branch: "hotfix", name: "api-hotfix", status: .clean),
+        ]
+        let result = ConstellationLayout().buildOrbits(
+            center: center, name: "api", worktrees: worktrees,
+            rings: [RingSpec(radius: 115, count: 3, angleOffset: 0.4)])
+
+        #expect(result.center.point == center)   // geometry unchanged
+        #expect(result.center.name == "api")
+        #expect(result.center.status == .dirty)  // the main worktree's status
+    }
+
+    @Test func anEmptyRepoCentersWithItsNameAndNoStatus() {
+        let result = ConstellationLayout().buildOrbits(
+            center: StagePoint(x: 512, y: 256), name: "empty", worktrees: [], rings: [])
+
+        #expect(result.center.name == "empty")
+        #expect(result.center.status == nil)
     }
 }

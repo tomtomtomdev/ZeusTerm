@@ -94,7 +94,9 @@ struct WorktreeOrbitStoreTests {
         #expect(orbits.satellites.map(\.branch) == ["main", "hotfix"])
         #expect(orbits.satellites.map(\.status) == [.clean, .dirty])
         #expect(orbits.rings.count == 1)                       // two worktrees seat on the inner ring
-        #expect(orbits.center == StagePoint(x: 512, y: 256))
+        #expect(orbits.center.point == StagePoint(x: 512, y: 256))
+        #expect(orbits.center.name == "api")                   // the dived-into repo, from its path
+        #expect(orbits.center.status == .clean)                // mirrors the main worktree (/code/api)
     }
 
     @Test func aFailedRepositoryReadLeavesJustTheCentralStarNotAStaleOrbit() async throws {

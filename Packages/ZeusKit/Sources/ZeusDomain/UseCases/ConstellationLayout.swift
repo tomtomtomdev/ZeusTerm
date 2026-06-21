@@ -53,8 +53,11 @@ public struct ConstellationLayout: Sendable {
     }
 
     /// Worktree level: the repo star centered, worktrees distributed across elliptical
-    /// orbit rings (filled in order). `squash` flattens the rings (ry = rx·squash).
+    /// orbit rings (filled in order). `squash` flattens the rings (ry = rx·squash). The center
+    /// carries the repo `name` and a status mirroring its root — the main (first) worktree, the same
+    /// working tree the Hub colors that repo's star by; nil when the repo has no worktrees.
     public func buildOrbits(center: StagePoint,
+                            name: String,
                             worktrees: [WorktreeInput],
                             rings: [RingSpec],
                             squash: Double = 0.72) -> ConstellationOrbits {
@@ -82,6 +85,7 @@ public struct ConstellationLayout: Sendable {
                     labelPoint: labelPoint, labelOnRight: nx >= 0))
             }
         }
-        return ConstellationOrbits(center: center, rings: orbitRings, satellites: satellites)
+        let centerNode = OrbitCenter(point: center, name: name, status: worktrees.first?.status)
+        return ConstellationOrbits(center: centerNode, rings: orbitRings, satellites: satellites)
     }
 }

@@ -132,19 +132,34 @@ public struct WorktreeInput: Sendable, Hashable {
     }
 }
 
+/// The central repo star at the orbit level: where it sits, plus what it represents — the
+/// dived-into repo's name and a status mirroring its root (the main worktree). Distinct from a bare
+/// `StagePoint` so the center renders a label + status color instead of an anonymous dot. `status`
+/// is nil while the repo loads / has no worktrees.
+public struct OrbitCenter: Sendable, Hashable {
+    public var point: StagePoint
+    public var name: String
+    public var status: GitStatus?
+    public init(point: StagePoint, name: String, status: GitStatus?) {
+        self.point = point; self.name = name; self.status = status
+    }
+}
+
 /// The laid-out worktree level: the repo star's orbit rings + satellites.
 public struct ConstellationOrbits: Sendable, Hashable {
-    public var center: StagePoint
+    public var center: OrbitCenter
     public var rings: [OrbitRing]
     public var satellites: [SatelliteNode]
-    public init(center: StagePoint, rings: [OrbitRing], satellites: [SatelliteNode]) {
+    public init(center: OrbitCenter, rings: [OrbitRing], satellites: [SatelliteNode]) {
         self.center = center; self.rings = rings; self.satellites = satellites
     }
 
     /// Just the central repo star — no rings, no satellites. The neutral orbit shown while a repo
-    /// loads or when its read fails, so the "empty orbit" shape lives in one place.
-    public static func empty(center: StagePoint) -> ConstellationOrbits {
-        ConstellationOrbits(center: center, rings: [], satellites: [])
+    /// loads or when its read fails, so the "empty orbit" shape lives in one place. Carries the repo
+    /// name when known (the loading/error states still name the repo); status is unknown until loaded.
+    public static func empty(center: StagePoint, name: String = "") -> ConstellationOrbits {
+        ConstellationOrbits(center: OrbitCenter(point: center, name: name, status: nil),
+                            rings: [], satellites: [])
     }
 }
 

@@ -49,15 +49,16 @@ public final class WorktreeOrbitStore {
     public func load(repoPath: URL) {
         loadTask?.cancel()
         orbits = nil
+        let name = repoPath.lastPathComponent
         loadTask = Task { [weak self] in
             guard let self else { return }
             do {
                 let worktrees = try await self.loader.load(repoPath: repoPath)
                 if Task.isCancelled { return }
-                self.publish(worktrees)
+                self.publish(name: name, worktrees: worktrees)
             } catch {
                 if Task.isCancelled { return }
-                self.orbits = .empty(center: self.center)
+                self.orbits = .empty(center: self.center, name: name)
             }
         }
     }
@@ -66,8 +67,8 @@ public final class WorktreeOrbitStore {
     /// so tests drive the async load deterministically.
     public func waitForLoad() async { await loadTask?.value }
 
-    private func publish(_ worktrees: [WorktreeInput]) {
-        orbits = layout.buildOrbits(center: center,
+    private func publish(name: String, worktrees: [WorktreeInput]) {
+        orbits = layout.buildOrbits(center: center, name: name,
                                     worktrees: worktrees,
                                     rings: ringPlanner.rings(forWorktreeCount: worktrees.count))
     }

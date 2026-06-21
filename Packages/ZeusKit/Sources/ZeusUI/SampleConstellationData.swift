@@ -155,7 +155,8 @@ public enum SampleConstellationData {
     }
 
     public static var orbits: ConstellationOrbits {
-        ConstellationLayout().buildOrbits(center: worktreeCenter, worktrees: worktrees, rings: rings)
+        ConstellationLayout().buildOrbits(center: worktreeCenter, name: projectName,
+                                          worktrees: worktrees, rings: rings)
     }
 
     public static var tree: ConstellationTree {

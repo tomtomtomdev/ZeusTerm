@@ -169,10 +169,19 @@ struct OrbitLevelView: View {
                 }
             }
 
-            StarDisc(color: theme.gold, diameter: 17, ring: true)
-                .shadow(color: theme.gold.opacity(0.6), radius: 22)
-                .position(x: orbits.center.x, y: orbits.center.y)
-                .accessibilityLabel("repository")
+            StarDisc(color: centerColor, diameter: 17, ring: true)
+                .shadow(color: centerColor.opacity(0.6), radius: 22)
+                .position(x: orbits.center.point.x, y: orbits.center.point.y)
+                .accessibilityLabel(centerLabel(orbits.center))
+
+            if !orbits.center.name.isEmpty {
+                Text(orbits.center.name)
+                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(theme.textHi)
+                    .fixedSize()
+                    .position(x: orbits.center.point.x, y: orbits.center.point.y + 28)
+                    .accessibilityHidden(true)
+            }
 
             ForEach(orbits.satellites) { sat in
                 StarDisc(color: theme.statusColor(sat.status), diameter: sat.size)
@@ -196,9 +205,24 @@ struct OrbitLevelView: View {
         .frame(width: StageGeometry.width, height: StageGeometry.height)
     }
 
+    /// The repo star's color mirrors its root status (the main worktree), defaulting to clean when
+    /// the repo is still loading or has no worktrees — continuous with the status-colored star the
+    /// user clicked at the Hub. The white ring + size + glow keep it distinct from the satellites.
+    private var centerColor: Color {
+        theme.statusColor(orbits.center.status ?? .clean)
+    }
+
     /// Plain `String` (not a `LocalizedStringKey`) so the `GitStatus` reads as its case name.
     private func satelliteLabel(_ sat: SatelliteNode) -> String {
         "\(sat.name), \(sat.branch), \(sat.status)"
+    }
+
+    /// Names the central repo star and reports its status; falls back to "repository" before the
+    /// repo name is known (the brief loading frame).
+    private func centerLabel(_ center: OrbitCenter) -> String {
+        let name = center.name.isEmpty ? "repository" : center.name
+        guard let status = center.status else { return "\(name), repository" }
+        return "\(name), repository, \(status)"
     }
 }
 
