@@ -4,8 +4,14 @@ import Foundation
 public struct ZeusSettings: Codable, Sendable, Equatable {
     public var gradient: GradientConfig
 
-    public init(gradient: GradientConfig = .aurora) {
+    /// User-configured discovery roots as filesystem path strings (feature #1, P3-D). Empty means
+    /// "use the built-in dev roots" — `ScanRootResolver` applies that fallback. Stored as paths so
+    /// the DTO stays Codable/Sendable without a `URL` dependency leaking into persistence.
+    public var scanRoots: [String]
+
+    public init(gradient: GradientConfig = .aurora, scanRoots: [String] = []) {
         self.gradient = gradient
+        self.scanRoots = scanRoots
     }
 }
 
