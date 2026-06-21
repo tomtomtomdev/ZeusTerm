@@ -26,6 +26,8 @@ public enum NavigationAction: Sendable {
     case backTo(Level)
     case selectCommit(String)
     case checkout(String)
+    /// The branch tip became known after its commits loaded (real git) — land HEAD/selected on it.
+    case branchTipResolved(String)
     case phaseAdvance   // leave → enter (flips view, applies context, swaps origins)
     case phaseSettle    // enter → idle
 }

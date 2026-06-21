@@ -89,6 +89,29 @@ struct NavigationReducerTests {
         #expect(s.origins == [])
     }
 
+    @Test func branchTipResolvedLandsHeadOnTheTipOnceTheTreeLoads() {
+        var s = NavigationState.initial
+        s.view = .tree                              // dived in; real tip not yet known (tip == "")
+
+        s = reduce(s, .branchTipResolved("abc123"))
+
+        #expect(s.tip == "abc123")
+        #expect(s.head == "abc123")
+        #expect(s.selected == "abc123")
+        #expect(s.detached == false)
+    }
+
+    @Test func branchTipResolvedIsIgnoredOnceResolvedOrAwayFromTheTree() {
+        // Already resolved + the user checked out an older commit → a late resolution must not stomp it.
+        var resolved = NavigationState.initial
+        resolved.view = .tree; resolved.tip = "tip"; resolved.head = "older"; resolved.selected = "older"
+        #expect(reduce(resolved, .branchTipResolved("tip")) == resolved)
+
+        // Off the tree level → ignored (a stale resolution can't reach across levels).
+        let hub = NavigationState.initial           // view == .hub
+        #expect(reduce(hub, .branchTipResolved("x")) == hub)
+    }
+
     @Test func selectAndCheckoutAreVisualOnly() {
         var s = NavigationState.initial
         s.tip = "12ab9c"; s.head = "12ab9c"; s.selected = "12ab9c"

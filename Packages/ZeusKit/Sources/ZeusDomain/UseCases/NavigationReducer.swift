@@ -48,6 +48,13 @@ public enum NavigationReducer {
             s.head = sha
             s.selected = sha
 
+        case let .branchTipResolved(sha):
+            // Land HEAD on the freshly-loaded tip exactly once per dive: only at the tree level and
+            // only while the tip is still unknown, so a late/duplicate resolution can't stomp a
+            // checkout the user already made or reach across to another level.
+            guard s.view == .tree, s.tip.isEmpty else { return state }
+            s.tip = sha; s.head = sha; s.selected = sha
+
         case .phaseAdvance:
             guard s.phase == .leave else { return state }
             s.phase = .enter
