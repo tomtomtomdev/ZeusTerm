@@ -48,6 +48,17 @@ public protocol RepositoryIndexStore: Sendable {
     func remove(paths: [String]) async throws
 }
 
+/// Watches the scan roots for filesystem changes so the Hub stays live (P3-D.3) — a new repo
+/// appears, one vanishes, a commit moves HEAD, or a working-tree edit flips a repo's status,
+/// all without the user relaunching. The FSEvents adapter (P3-D.3b) implements this; the store
+/// (P3-D.3c) filters the stream through `ChangeRelevance` and debounces it before re-scanning.
+public protocol FileSystemWatching: Sendable {
+    /// An async stream of changed filesystem paths under `roots`. The adapter coalesces FSEvents
+    /// at the OS latency window; the stream finishes (and the adapter tears down its FSEvents
+    /// stream) when the task iterating it is cancelled.
+    func changes(under roots: [URL]) -> AsyncStream<String>
+}
+
 /// Provides command autosuggestions for the right-arrow accept feature (#4).
 public protocol SuggestionProviding: Sendable {
     func suggestions(for input: String, cwd: URL) async -> [String]
