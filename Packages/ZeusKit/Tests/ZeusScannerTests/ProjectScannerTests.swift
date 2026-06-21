@@ -46,6 +46,27 @@ struct ProjectScannerTests {
         #expect(!found.contains { $0.path.contains("swift-collections") })
     }
 
+    @Test func doesNotIndexRepositoriesNestedInsideARepoThatIsItselfAScanRoot() async throws {
+        let fm = FileManager.default
+        // The scan root is ITSELF a repo (the user configured a single project as a root).
+        let repo = fm.temporaryDirectory.appendingPathComponent("zeus-ownroot-\(UUID().uuidString)")
+        defer { try? fm.removeItem(at: repo) }
+        try fm.createDirectory(at: repo.appendingPathComponent(".git"),
+                               withIntermediateDirectories: true)
+        // A vendored SwiftPM checkout under the root's build output. `build` is NOT in the pruned
+        // set, so the walk would descend and mis-index it. Regression: 4b106aa only pruned repos
+        // discovered as SUBDIRECTORIES; a repo configured as its own root still had build/ walked.
+        try fm.createDirectory(
+            at: repo.appendingPathComponent("build/SourcePackages/checkouts/swift-collections/.git"),
+            withIntermediateDirectories: true)
+
+        let found = try await ProjectScanner().discoverRepositoryURLs(under: [repo])
+
+        // The root repo owns its whole subtree — it is the only project, nothing nested leaks.
+        #expect(found.map(\.lastPathComponent) == [repo.lastPathComponent])
+        #expect(!found.contains { $0.path.contains("swift-collections") })
+    }
+
     @Test func listsRootEntryNamesForClassification() throws {
         let fm = FileManager.default
         let repo = fm.temporaryDirectory.appendingPathComponent("zeus-entries-\(UUID().uuidString)")

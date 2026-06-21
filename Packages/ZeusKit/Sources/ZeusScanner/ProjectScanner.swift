@@ -52,6 +52,16 @@ public struct ProjectScanner: ProjectScanning {
         }
 
         for root in roots {
+            // A scan root that is ITSELF a repo owns its whole subtree — record it and don't walk
+            // inside. Its build output, vendored deps, and submodules aren't separate top-level
+            // projects. The in-loop `.git` branch below only prunes a discovered repo's subtree
+            // when the repo surfaces as a child; the root never surfaces as its own child, so
+            // without this its build/ (not in the pruned set) would still be descended into.
+            if fm.fileExists(atPath: root.appendingPathComponent(".git").path) {
+                record(root)
+                continue
+            }
+
             guard let enumerator = fm.enumerator(
                 at: root,
                 includingPropertiesForKeys: [.isDirectoryKey],
@@ -63,8 +73,9 @@ public struct ProjectScanner: ProjectScanning {
                 let name = url.lastPathComponent
 
                 // A `.git` entry (dir, or a worktree/submodule pointer file) marks its PARENT as a
-                // repo. This fires when a scan root is itself a repo, so the root's own `.git`
-                // surfaces as a top-level child. Don't descend into `.git`'s internals.
+                // repo. Fallback net: a root-is-repo is pruned before this loop, and a child repo
+                // is normally caught by the directory branch below (which skips its subtree before
+                // `.git` is ever yielded). This still records the parent if a `.git` slips through.
                 if name == ".git" {
                     record(url.deletingLastPathComponent())
                     enumerator.skipDescendants()
