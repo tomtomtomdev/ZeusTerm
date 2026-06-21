@@ -110,6 +110,19 @@ struct HubDataStoreTests {
         func hasFullDiskAccess() -> Bool { granted }
     }
 
+    /// A Full Disk Access probe whose grant can flip mid-test — proves a recheck re-reads access
+    /// instead of caching the launch-time answer. Lock-guarded: the store probes off the main actor.
+    private final class MutableStubFDA: FullDiskAccessChecking, @unchecked Sendable {
+        private let lock = NSLock()
+        private var _granted: Bool
+        init(granted: Bool) { _granted = granted }
+        var granted: Bool {
+            get { lock.withLock { _granted } }
+            set { lock.withLock { _granted = newValue } }
+        }
+        func hasFullDiskAccess() -> Bool { lock.withLock { _granted } }
+    }
+
     private enum StubError: Error { case scanFailed }
     private let t0 = Date(timeIntervalSince1970: 1_700_000_000)
     private let home = URL(fileURLWithPath: "/Users/zeus")
@@ -322,6 +335,26 @@ struct HubDataStoreTests {
         // A later reconcile (e.g. the user edited their roots) must not resurrect the dismissed hint.
         await store.reload(roots: [home.appendingPathComponent("Documents")])
         #expect(store.liveRefreshNeedsFullDiskAccess == false)
+    }
+
+    @Test func recheckClearsTheFDAHintWhenAccessIsGrantedWhileRunning() async {
+        // Regression (FDA banner stuck): the probe ran only at load(), so granting access in System
+        // Settings while Zeus was already running was never noticed — the banner stayed up until the
+        // app relaunched. A foreground recheck must re-probe and clear the hint, no relaunch needed.
+        let fda = MutableStubFDA(granted: false)
+        let store = HubDataStore(
+            loader: HubDataLoader(scanner: StubScanner(repos: [], entries: [:]), git: StubGit()),
+            roots: [home.appendingPathComponent("Documents")],
+            fullDiskAccess: fda,
+            home: home)
+
+        await store.load()
+        #expect(store.liveRefreshNeedsFullDiskAccess == true)   // denied at launch → banner shows
+
+        fda.granted = true                                       // user grants FDA in System Settings
+        await store.recheckFullDiskAccessHint()                  // app returns to the foreground
+
+        #expect(store.liveRefreshNeedsFullDiskAccess == false)   // banner clears without a relaunch
     }
 
     @Test func withoutAnFDACheckerTheHintNeverShows() async {

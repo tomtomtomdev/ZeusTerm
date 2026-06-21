@@ -106,6 +106,14 @@ public final class HubDataStore {
             hasAccess: hasAccess, roots: roots, home: home)
     }
 
+    /// Re-probe Full Disk Access and recompute the hint — call when the app returns to the foreground,
+    /// since the user may have just granted access in System Settings. Full Disk Access takes effect
+    /// for the running process without a relaunch, but the launch-time probe result would otherwise
+    /// stick and leave the banner up; this re-reads access against the roots last watched.
+    public func recheckFullDiskAccessHint() async {
+        await updateFullDiskAccessHint(roots: roots)
+    }
+
     /// Hide the Full Disk Access hint for the rest of the session. It reappears on the next launch if
     /// access is still missing — a deliberate, gentle nudge rather than a one-time dialog.
     public func dismissFullDiskAccessHint() {

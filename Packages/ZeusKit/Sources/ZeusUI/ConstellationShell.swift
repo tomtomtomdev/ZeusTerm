@@ -19,6 +19,7 @@ public struct ConstellationShell<TerminalContent: View>: View {
     /// injects a real one so diving into a worktree shows that branch's real commit history.
     @State private var treeData: CommitTreeStore?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
     private let terminalContent: TerminalContent
 
     public init(theme: Theme = .dark,
@@ -59,6 +60,11 @@ public struct ConstellationShell<TerminalContent: View>: View {
         .task { store.setReduceMotion(reduceMotion) }
         .task { await hubData?.load() }
         .onChange(of: reduceMotion) { _, now in store.setReduceMotion(now) }
+        // Returning to the foreground may mean the user just granted Full Disk Access in System
+        // Settings — re-probe so the hint banner clears without requiring an app relaunch.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { await hubData?.recheckFullDiskAccessHint() } }
+        }
         // Diving into a repo sets `projectPath` (at phaseAdvance); load that repo's real worktrees
         // so the orbit level reflects the dived-into repo rather than the sample fixture.
         .onChange(of: store.state.projectPath) { _, path in
