@@ -12,16 +12,21 @@ public struct ConstellationShell<TerminalContent: View>: View {
     /// nil in previews / the ZoomSpike harness (Hub falls back to `SampleConstellationData`);
     /// the app injects a real one so the Hub renders the live scan.
     @State private var hubData: HubDataStore?
+    /// nil in previews (the worktree level falls back to `SampleConstellationData`); the app injects
+    /// a real one so diving into a repo shows that repo's real worktrees loaded from git.
+    @State private var orbitData: WorktreeOrbitStore?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let terminalContent: TerminalContent
 
     public init(theme: Theme = .dark,
                 store: NavigationStore = NavigationStore(),
                 hubData: HubDataStore? = nil,
+                orbitData: WorktreeOrbitStore? = nil,
                 @ViewBuilder terminalContent: () -> TerminalContent) {
         _store = State(initialValue: store)
         _theme = State(initialValue: theme)
         _hubData = State(initialValue: hubData)
+        _orbitData = State(initialValue: orbitData)
         self.terminalContent = terminalContent()
     }
 
@@ -49,6 +54,12 @@ public struct ConstellationShell<TerminalContent: View>: View {
         .task { store.setReduceMotion(reduceMotion) }
         .task { await hubData?.load() }
         .onChange(of: reduceMotion) { _, now in store.setReduceMotion(now) }
+        // Diving into a repo sets `projectPath` (at phaseAdvance); load that repo's real worktrees
+        // so the orbit level reflects the dived-into repo rather than the sample fixture.
+        .onChange(of: store.state.projectPath) { _, path in
+            guard let path else { return }
+            orbitData?.load(repoPath: URL(fileURLWithPath: path))
+        }
     }
 
     /// Hub source: the live scan once loaded, an empty hub while scanning, and the sample
@@ -60,6 +71,15 @@ public struct ConstellationShell<TerminalContent: View>: View {
 
     /// True while a real store is injected and its first scan hasn't completed.
     private var isScanning: Bool { hubData != nil && hubData?.hub == nil }
+
+    /// Worktree source: the dived-into repo's real orbits once loaded, an empty orbit (just the
+    /// repo star) while loading, and the sample fixture when no real store is injected (previews).
+    private var displayOrbits: ConstellationOrbits {
+        if let orbitData {
+            return orbitData.orbits ?? .empty(center: WorktreeOrbitStore.defaultCenter)
+        }
+        return SampleConstellationData.orbits
+    }
 
     // MARK: Canvas (zoom stage + floating Back pill)
 
@@ -90,11 +110,13 @@ public struct ConstellationShell<TerminalContent: View>: View {
         switch store.state.view {
         case .hub:
             HubLevelView(hub: displayHub, theme: theme) { star in
+                // `star.id` is the repo's filesystem path (real scans) — carried so the worktree
+                // level can load that repo's real git data; `star.name` stays the display label.
                 store.dispatch(.dive(to: .work, focal: star.point,
-                                     context: DiveContext(project: star.name)))
+                                     context: DiveContext(project: star.name, projectPath: star.id)))
             }
         case .work:
-            OrbitLevelView(orbits: SampleConstellationData.orbits, theme: theme) { sat in
+            OrbitLevelView(orbits: displayOrbits, theme: theme) { sat in
                 store.dispatch(.dive(to: .tree, focal: sat.point,
                                      context: DiveContext(worktreeBranch: sat.branch,
                                                           tip: SampleConstellationData.tipSHA)))

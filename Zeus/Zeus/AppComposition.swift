@@ -48,6 +48,14 @@ enum AppComposition {
             fullDiskAccess: FullDiskAccessProbe())
     }
 
+    /// The worktree (orbit) data store: loads a dived-into repo's real worktrees through the same
+    /// `git` CLI adapter the rest of the app uses. Stateless beyond the loader, so unlike the Hub
+    /// store it needs no roots/index/watcher — it loads on demand when the user dives into a repo.
+    @MainActor
+    static func makeOrbitStore() -> WorktreeOrbitStore {
+        WorktreeOrbitStore(loader: WorktreeOrbitLoader(git: GitCLIService()))
+    }
+
     /// The roots the scanner should walk: the user's configured roots when set, else the built-in
     /// dev roots — resolved in one place so the initial scan and every re-scan agree.
     @MainActor

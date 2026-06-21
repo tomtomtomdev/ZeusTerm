@@ -140,6 +140,12 @@ public struct ConstellationOrbits: Sendable, Hashable {
     public init(center: StagePoint, rings: [OrbitRing], satellites: [SatelliteNode]) {
         self.center = center; self.rings = rings; self.satellites = satellites
     }
+
+    /// Just the central repo star — no rings, no satellites. The neutral orbit shown while a repo
+    /// loads or when its read fails, so the "empty orbit" shape lives in one place.
+    public static func empty(center: StagePoint) -> ConstellationOrbits {
+        ConstellationOrbits(center: center, rings: [], satellites: [])
+    }
 }
 
 // MARK: - Branch-tree (commit graph) level
