@@ -38,9 +38,10 @@ and GPU-smooth, with a configurable animated gradient identity.
      `~/work`, `~/git`, `~/Documents`, `~/Desktop`, plus user-added roots). `FileManager.enumerator` with
      `.skipsHiddenFiles = false`, pruning heavy dirs (`node_modules`, `.build`, `DerivedData`,
      `Pods`, `vendor`, `target`, `.venv`).
-  2. **Spotlight (`NSMetadataQuery`)** as an accelerator — query for items named `.git`.
-     ⚠️ **Research spike required** (see §4): Spotlight historically does not index dotfolder
-     contents, so treat this as best-effort, not the source of truth.
+  2. **Spotlight (`NSMetadataQuery`)** as an accelerator — *deferred to v2*. ❌ **S4 resolved
+     negative** (§4.1): Spotlight never indexes `.git` dotfolders, and returned 0 results under the
+     home tree on the test machine, so it is not a viable discovery source. Manual enumeration (#1)
+     is the source of truth.
   3. **Live updates** via **FSEvents** (`FSEventStreamCreate`) watching the dev roots so the
      tree updates as repos appear/disappear/commit.
 - A repo = a directory containing `.git` (dir) **or** a `.git` file (worktree/submodule pointer).
@@ -138,7 +139,7 @@ Each spike is a tiny throwaway prototype with a pass/fail acceptance test. Run t
 | S1 | Terminal embed | Does SwiftTerm give us a real, resizable PTY in SwiftUI with copy/paste + 256color? | Run `vim`, `htop`, `claude`; resize reflows; truecolor renders. |
 | S2 | Right-arrow accept | Can we render ghost text + accept on `→` and inject to PTY cleanly? | Type partial cmd, `→` completes, `Enter` runs it. |
 | S3 | Worktree truth | libgit2 worktree API vs `git worktree list --porcelain` — which is reliable? | All linked worktrees + branches enumerated for a multi-worktree repo. |
-| S4 | Spotlight for `.git` | Does `NSMetadataQuery` surface `.git` dirs, or must we enumerate manually? | Decide primary discovery strategy; document indexing limits. |
+| S4 | Spotlight for `.git` | Does `NSMetadataQuery` surface `.git` dirs, or must we enumerate manually? | ✅ **Resolved — negative (2026-06-21, see §4.1).** Manual enumeration is the source of truth; Spotlight accelerator deferred to v2. |
 | S5 | Scan performance | Time to index a disk with ~500 repos / deep `node_modules`? | < 3 s warm, pruning works, FSEvents keeps live. |
 | S6 | Gradient perf | Animated `MeshGradient` behind a busy terminal at 120 Hz — CPU/GPU cost? | Stable frame time, no terminal jank; falls back gracefully. |
 | S7 | libghostty | Is GPU terminal embedding feasible/worth it now (unstable C API)? | Go/No-go for v2; SwiftTerm stays v1 default. |
@@ -147,6 +148,24 @@ Each spike is a tiny throwaway prototype with a pass/fail acceptance test. Run t
 **Default decisions if a spike is inconclusive:** SwiftTerm (not libghostty) for v1; manual FS
 enumeration (Spotlight only as accelerator); `git` CLI shell-out for worktrees; Developer ID +
 non-sandboxed for v1.
+
+### 4.1 S4 result — Spotlight is *not* a viable discovery source (2026-06-21)
+
+Empirical spike via `mdfind` / `mdutil` on the dev machine:
+
+- `mdfind "kMDItemFSName == '.git'"` over the whole index → **0 results.** Spotlight does not index
+  dotfolders by name anywhere — a universal macOS limitation, not a per-machine quirk.
+- `mdfind -onlyin ~ "kMDItemFSName == '*'"` (literally *anything* under home) → **0 results**, even
+  for ordinary files like `Package.swift` / `SPEC.md`, while `mdfind -onlyin /Applications Safari.app`
+  resolves instantly. So even a marker-file proxy query (query `Package.swift` etc., walk up to the
+  enclosing `.git`) returns nothing when the home tree isn't surfaced to Spotlight — common on dev
+  Macs (home in Privacy exclusions / unindexed).
+
+**Decision:** manual deep enumeration (`ProjectScanner`) is the **source of truth**; the Spotlight
+`NSMetadataQuery` accelerator is **deferred to v2** (it cannot find `.git` and is empty whenever home
+is unindexed, so it adds complexity for no guaranteed benefit). This matches the §2.1 priority order
+and the inconclusive-spike default above. Revisit only if v2 needs faster cold start on large disks
+*and* a marker-file proxy proves to surface results on indexed machines.
 
 ### Spike outcomes
 | # | Date | Verdict | Notes |
@@ -376,7 +395,7 @@ scale step between levels reads as constant.
 ---
 
 ## 12. Risks & Open Questions
-1. **Spotlight won't index `.git`** → manual enumeration is the real source of truth (S4).
+1. **Spotlight won't index `.git`** → ✅ confirmed (S4, §4.1); manual enumeration is the source of truth, accelerator deferred to v2.
 2. **libghostty API instability** → SwiftTerm for v1; libghostty is opt-in v2 (S7).
 3. **Full Disk Access friction** → offer scoped-folder mode; explain why on first run (S8).
 4. **Animated gradient vs terminal perf** → throttle/freeze gradient under load; Reduce Motion (S6).
