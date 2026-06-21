@@ -42,6 +42,18 @@ public final class HubDataStore {
         }
     }
 
+    /// Re-scans against `roots` and republishes — called when the user edits their scan roots in
+    /// Settings (P3-D, Slice 2D). Unlike `load()` this skips the cached cold-start paint (the hub
+    /// is already on screen) and just reconciles. A failed rescan keeps the current hub: a transient
+    /// scan error must not blank an already-painted constellation.
+    public func reload(roots: [URL]) async {
+        do {
+            publish(try await loader.rescan(roots: roots))
+        } catch {
+            // Keep the current hub.
+        }
+    }
+
     private func publish(_ model: HubModel) {
         hub = layout.buildHub(clusters: model.clusters, hub: model.hub)
     }

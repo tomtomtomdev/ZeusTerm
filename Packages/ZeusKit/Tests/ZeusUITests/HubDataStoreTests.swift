@@ -33,6 +33,33 @@ struct HubDataStoreTests {
         func rootEntryNames(at repo: URL) throws -> Set<String> { [] }
     }
 
+    /// Discovers repos *per root* so a test can prove a rescan honored the roots it was handed.
+    private struct RootsAwareScanner: ProjectScanning {
+        var reposByRoot: [String: [URL]]
+        var entries: [String: Set<String>]
+        func discoverRepositoryURLs(under roots: [URL]) async throws -> [URL] {
+            roots.flatMap { reposByRoot[$0.path] ?? [] }
+        }
+        func rootEntryNames(at repo: URL) throws -> Set<String> { entries[repo.path] ?? [] }
+    }
+
+    /// Succeeds until `failNext` is flipped, then throws — lets a test populate the hub and then
+    /// fail a later rescan to prove the painted hub survives a transient scan error.
+    private final class FlakyScanner: ProjectScanning, @unchecked Sendable {
+        var failNext = false
+        let repos: [URL]
+        let entries: [String: Set<String>]
+        init(repos: [URL], entries: [String: Set<String>]) {
+            self.repos = repos
+            self.entries = entries
+        }
+        func discoverRepositoryURLs(under roots: [URL]) async throws -> [URL] {
+            if failNext { throw StubError.scanFailed }
+            return repos
+        }
+        func rootEntryNames(at repo: URL) throws -> Set<String> { entries[repo.path] ?? [] }
+    }
+
     /// In-memory index that serves canned cached entries — enough to exercise the store's
     /// cold-start paint; writes are no-ops (the loader's persistence is covered in ZeusDomain).
     private actor StubIndex: RepositoryIndexStore {
@@ -108,5 +135,39 @@ struct HubDataStoreTests {
         let hub = try! #require(store.hub)
         // Final published state is the live reconcile (dirty), not the stale cached clean.
         #expect(hub.stars.contains { $0.name == "api" && $0.status == .dirty })
+    }
+
+    // MARK: - P3-D (roots 2D.1): reload(roots:) — re-scan when the user edits their roots
+
+    @Test func reloadRescansForTheRootsItIsGiven() async {
+        let web = URL(fileURLWithPath: "/w/web")
+        let scanner = RootsAwareScanner(reposByRoot: ["/w": [web]], entries: ["/w/web": ["package.json"]])
+        let store = HubDataStore(
+            loader: HubDataLoader(scanner: scanner, git: StubGit(statuses: ["/w/web": .dirty])), roots: [])
+
+        await store.reload(roots: [])                                   // no roots → no repos
+        let emptyCount = store.hub?.stars.count ?? 0
+
+        await store.reload(roots: [URL(fileURLWithPath: "/w")])         // now scans /w → finds web
+        let populated = try! #require(store.hub)
+
+        #expect(populated.stars.count > emptyCount)
+        #expect(populated.stars.contains { $0.name == "web" && !$0.isHub })
+    }
+
+    @Test func reloadKeepsTheCurrentHubWhenTheRescanFails() async {
+        let web = URL(fileURLWithPath: "/w/web")
+        let scanner = FlakyScanner(repos: [web], entries: ["/w/web": ["package.json"]])
+        let store = HubDataStore(
+            loader: HubDataLoader(scanner: scanner, git: StubGit(statuses: ["/w/web": .dirty])), roots: [])
+
+        await store.reload(roots: [URL(fileURLWithPath: "/w")])         // succeeds → populated
+        let populated = store.hub
+        #expect(populated?.stars.contains { $0.name == "web" } == true)
+
+        scanner.failNext = true
+        await store.reload(roots: [URL(fileURLWithPath: "/w")])         // fails → keep the painted hub
+
+        #expect(store.hub == populated)
     }
 }
