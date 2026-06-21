@@ -32,7 +32,7 @@ public struct ProjectScanner: ProjectScanning {
         home: URL = FileManager.default.homeDirectoryForCurrentUser,
         fileManager: FileManager = .default
     ) -> [URL] {
-        let names = ["Developer", "Projects", "Code", "src", "work", "git", "Documents"]
+        let names = ["Developer", "Projects", "Code", "src", "work", "git", "Documents", "Desktop"]
         return names.compactMap { name in
             let url = home.appendingPathComponent(name, isDirectory: true)
             var isDir: ObjCBool = false

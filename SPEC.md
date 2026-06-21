@@ -35,7 +35,7 @@ and GPU-smooth, with a configurable animated gradient identity.
 ### 2.1 Autoscan
 - **Discovery sources (in priority order):**
   1. **Manual deep enumeration** of dev roots (`~/Developer`, `~/Projects`, `~/Code`, `~/src`,
-     `~/work`, `~/git`, `~/Documents`, plus user-added roots). `FileManager.enumerator` with
+     `~/work`, `~/git`, `~/Documents`, `~/Desktop`, plus user-added roots). `FileManager.enumerator` with
      `.skipsHiddenFiles = false`, pruning heavy dirs (`node_modules`, `.build`, `DerivedData`,
      `Pods`, `vendor`, `target`, `.venv`).
   2. **Spotlight (`NSMetadataQuery`)** as an accelerator — query for items named `.git`.

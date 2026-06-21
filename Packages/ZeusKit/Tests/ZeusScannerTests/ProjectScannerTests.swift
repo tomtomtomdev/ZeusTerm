@@ -83,4 +83,17 @@ struct ProjectScannerTests {
         // Non-existent SPEC roots (Projects, src, work, git, Documents) are pruned.
         #expect(!roots.contains { $0.lastPathComponent == "Projects" })
     }
+
+    @Test func defaultDevRootsIncludesDesktopWhenItExists() throws {
+        let fm = FileManager.default
+        let home = fm.temporaryDirectory.appendingPathComponent("zeus-home-\(UUID().uuidString)")
+        defer { try? fm.removeItem(at: home) }
+        // ~/Desktop is a common dev root (the user keeps repos there), so it must be scanned.
+        try fm.createDirectory(at: home.appendingPathComponent("Desktop"),
+                               withIntermediateDirectories: true)
+
+        let roots = ProjectScanner.defaultDevRoots(home: home, fileManager: fm)
+
+        #expect(roots.contains { $0.lastPathComponent == "Desktop" })
+    }
 }
