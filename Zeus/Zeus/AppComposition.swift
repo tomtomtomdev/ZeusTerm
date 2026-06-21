@@ -29,14 +29,20 @@ enum AppComposition {
         return EphemeralSettingsStore()
     }
 
-    /// The Hub data store, seeded with the user's effective scan roots.
+    /// The Hub data store, seeded with the user's effective scan roots and an FSEvents watcher so
+    /// the Hub stays live (P3-D.3): a new/removed repo, a commit, or a working-tree edit refreshes
+    /// the constellation without a relaunch. `ChangeRelevance` is handed the *same* pruned-dir set
+    /// the scanner walks with, so the two filters can't drift (e.g. an `npm install` under
+    /// `node_modules` is ignored by both).
     @MainActor
     static func makeHubStore(settings: SettingsStore) -> HubDataStore {
         HubDataStore(
             loader: HubDataLoader(scanner: ProjectScanner(),
                                   git: GitCLIService(),
                                   index: makeIndexStore()),
-            roots: effectiveRoots(for: settings))
+            roots: effectiveRoots(for: settings),
+            watcher: FSEventsWatcher(),
+            relevance: ChangeRelevance(prunedDirectoryNames: ProjectScanner.defaultPruned))
     }
 
     /// The roots the scanner should walk: the user's configured roots when set, else the built-in

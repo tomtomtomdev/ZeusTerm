@@ -70,6 +70,39 @@ struct HubDataStoreTests {
         func remove(paths: [String]) async throws {}
     }
 
+    /// Counts how many times a scan ran, so a test can prove a burst of changes coalesced into a
+    /// single reconcile (and that an irrelevant change triggered none). Lock-guarded: the loader's
+    /// `rescan` runs off the main actor, so the count is mutated off-main and read on-main.
+    private final class CountingScanner: ProjectScanning, @unchecked Sendable {
+        private let lock = NSLock()
+        private var _scanCount = 0
+        var scanCount: Int { lock.withLock { _scanCount } }
+        let repos: [URL]
+        let entries: [String: Set<String>]
+        init(repos: [URL], entries: [String: Set<String>]) {
+            self.repos = repos
+            self.entries = entries
+        }
+        func discoverRepositoryURLs(under roots: [URL]) async throws -> [URL] {
+            lock.withLock { _scanCount += 1 }
+            return repos
+        }
+        func rootEntryNames(at repo: URL) throws -> Set<String> { entries[repo.path] ?? [] }
+    }
+
+    /// A watcher whose stream yields canned paths then finishes — finite on purpose so the store's
+    /// watch loop terminates and `waitForWatchLoop()` returns deterministically (the real FSEvents
+    /// stream is infinite).
+    private struct StubWatcher: FileSystemWatching {
+        let paths: [String]
+        func changes(under roots: [URL]) -> AsyncStream<String> {
+            AsyncStream { continuation in
+                for path in paths { continuation.yield(path) }
+                continuation.finish()
+            }
+        }
+    }
+
     private enum StubError: Error { case scanFailed }
     private let t0 = Date(timeIntervalSince1970: 1_700_000_000)
 
@@ -169,5 +202,71 @@ struct HubDataStoreTests {
         await store.reload(roots: [URL(fileURLWithPath: "/w")])         // fails → keep the painted hub
 
         #expect(store.hub == populated)
+    }
+
+    // MARK: - P3-D.3c: live refresh (FSEvents change → relevance filter → debounce → reconcile)
+
+    @Test func aRelevantFileChangeTriggersADebouncedReconcile() async {
+        let web = URL(fileURLWithPath: "/w/web")
+        let scanner = CountingScanner(repos: [web], entries: ["/w/web": ["package.json"]])
+        let store = HubDataStore(
+            loader: HubDataLoader(scanner: scanner, git: StubGit(statuses: ["/w/web": .dirty])),
+            roots: [URL(fileURLWithPath: "/w")],
+            clock: ImmediateClock())
+
+        store.noteChange(at: "/w/web/Sources/main.swift")
+        await store.waitForRefresh()
+
+        #expect(scanner.scanCount == 1)
+        #expect(store.hub?.stars.contains { $0.name == "web" && !$0.isHub } == true)
+    }
+
+    @Test func anIrrelevantChangeUnderAPrunedDirSchedulesNoReconcile() async {
+        let scanner = CountingScanner(repos: [URL(fileURLWithPath: "/w/web")], entries: [:])
+        let store = HubDataStore(
+            loader: HubDataLoader(scanner: scanner, git: StubGit()),
+            roots: [URL(fileURLWithPath: "/w")],
+            clock: ImmediateClock())
+
+        store.noteChange(at: "/w/web/node_modules/dep/index.js")
+        await store.waitForRefresh()   // nothing scheduled → returns immediately
+
+        #expect(scanner.scanCount == 0)
+    }
+
+    @Test func aBurstOfRelevantChangesCoalescesIntoASingleReconcile() async {
+        let web = URL(fileURLWithPath: "/w/web")
+        let scanner = CountingScanner(repos: [web], entries: ["/w/web": ["package.json"]])
+        let store = HubDataStore(
+            loader: HubDataLoader(scanner: scanner, git: StubGit()),
+            roots: [URL(fileURLWithPath: "/w")],
+            clock: ImmediateClock())
+
+        // Three synchronous notes: each re-arms the debounce before the prior task can run, so
+        // only the last survives → one reconcile, not three.
+        store.noteChange(at: "/w/web/a.swift")
+        store.noteChange(at: "/w/web/b.swift")
+        store.noteChange(at: "/w/web/c.swift")
+        await store.waitForRefresh()
+
+        #expect(scanner.scanCount == 1)
+    }
+
+    @Test func startWatchingReconcilesWhenTheWatcherReportsARelevantChange() async {
+        let web = URL(fileURLWithPath: "/w/web")
+        let scanner = CountingScanner(repos: [web], entries: ["/w/web": ["package.json"]])
+        let watcher = StubWatcher(paths: ["/w/web/Sources/main.swift"])
+        let store = HubDataStore(
+            loader: HubDataLoader(scanner: scanner, git: StubGit(statuses: ["/w/web": .dirty])),
+            roots: [],
+            watcher: watcher,
+            clock: ImmediateClock())
+
+        store.startWatching(roots: [URL(fileURLWithPath: "/w")])
+        await store.waitForWatchLoop()   // finite stub stream drained → noteChange invoked
+        await store.waitForRefresh()     // debounce + reconcile complete
+
+        #expect(scanner.scanCount == 1)
+        #expect(store.hub?.stars.contains { $0.name == "web" && !$0.isHub } == true)
     }
 }
