@@ -15,6 +15,9 @@ public struct ConstellationShell<TerminalContent: View>: View {
     /// nil in previews (the worktree level falls back to `SampleConstellationData`); the app injects
     /// a real one so diving into a repo shows that repo's real worktrees loaded from git.
     @State private var orbitData: WorktreeOrbitStore?
+    /// nil in previews (the branch-tree level falls back to `SampleConstellationData`); the app
+    /// injects a real one so diving into a worktree shows that branch's real commit history.
+    @State private var treeData: CommitTreeStore?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let terminalContent: TerminalContent
 
@@ -22,11 +25,13 @@ public struct ConstellationShell<TerminalContent: View>: View {
                 store: NavigationStore = NavigationStore(),
                 hubData: HubDataStore? = nil,
                 orbitData: WorktreeOrbitStore? = nil,
+                treeData: CommitTreeStore? = nil,
                 @ViewBuilder terminalContent: () -> TerminalContent) {
         _store = State(initialValue: store)
         _theme = State(initialValue: theme)
         _hubData = State(initialValue: hubData)
         _orbitData = State(initialValue: orbitData)
+        _treeData = State(initialValue: treeData)
         self.terminalContent = terminalContent()
     }
 
@@ -60,6 +65,17 @@ public struct ConstellationShell<TerminalContent: View>: View {
             guard let path else { return }
             orbitData?.load(repoPath: URL(fileURLWithPath: path))
         }
+        // Entering the tree level loads the dived-into worktree's branch history (fires on every
+        // dive-in, incl. re-diving the same branch, so its commits/HEAD stay fresh).
+        .onChange(of: store.state.view) { _, view in
+            guard view == .tree, let path = store.state.projectPath,
+                  let branch = store.state.worktreeBranch else { return }
+            treeData?.load(repoPath: URL(fileURLWithPath: path), branch: branch)
+        }
+        // The tip is only known once the history loads — land HEAD/selected on it then.
+        .onChange(of: treeData?.tip) { _, tip in
+            if let tip { store.dispatch(.branchTipResolved(tip)) }
+        }
     }
 
     /// Hub source: the live scan once loaded, an empty hub while scanning, and the sample
@@ -79,6 +95,15 @@ public struct ConstellationShell<TerminalContent: View>: View {
             return orbitData.orbits ?? .empty(center: WorktreeOrbitStore.defaultCenter)
         }
         return SampleConstellationData.orbits
+    }
+
+    /// Branch-tree source: the dived-into worktree's real commit history once loaded, an empty tree
+    /// while loading, and the sample fixture when no real store is injected (previews).
+    private var displayTree: ConstellationTree {
+        if let treeData {
+            return treeData.tree ?? ConstellationTree(nodes: [], edges: [])
+        }
+        return SampleConstellationData.tree
     }
 
     // MARK: Canvas (zoom stage + floating Back pill)
@@ -117,12 +142,15 @@ public struct ConstellationShell<TerminalContent: View>: View {
             }
         case .work:
             OrbitLevelView(orbits: displayOrbits, theme: theme) { sat in
+                // Real mode resets the tip to empty and resolves it from the loaded history
+                // (.branchTipResolved); previews/ZoomSpike keep the sample tip so the fixture tree
+                // still highlights HEAD without a real store.
                 store.dispatch(.dive(to: .tree, focal: sat.point,
                                      context: DiveContext(worktreeBranch: sat.branch,
-                                                          tip: SampleConstellationData.tipSHA)))
+                                                          tip: treeData == nil ? SampleConstellationData.tipSHA : "")))
             }
         case .tree:
-            TreeLevelView(tree: SampleConstellationData.tree,
+            TreeLevelView(tree: displayTree,
                           head: store.state.head,
                           selected: store.state.selected,
                           theme: theme,
@@ -139,7 +167,9 @@ public struct ConstellationShell<TerminalContent: View>: View {
             ZStack { theme.panel; terminalContent }
                 .frame(height: 196)
         case .changes:
-            let selected = SampleConstellationData.tree.nodes.first { $0.id == store.state.selected }
+            // Commit header comes from the displayed tree (real once loaded); the diff is still the
+            // sample (empty for real shas) until the real `diff(forCommit:)` lands in slice 6.
+            let selected = displayTree.nodes.first { $0.id == store.state.selected }
             ChangesPanelView(commit: selected,
                              diff: SampleConstellationData.diff(forSHA: store.state.selected),
                              isHead: presenter.selectedIsHead,

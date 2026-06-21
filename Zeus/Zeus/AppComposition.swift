@@ -56,6 +56,14 @@ enum AppComposition {
         WorktreeOrbitStore(loader: WorktreeOrbitLoader(git: GitCLIService()))
     }
 
+    /// The branch-tree data store: loads a dived-into worktree's branch commit history through the
+    /// same `git` CLI adapter. Like the orbit store it's stateless beyond the loader and loads on
+    /// demand when the user dives into a worktree.
+    @MainActor
+    static func makeTreeStore() -> CommitTreeStore {
+        CommitTreeStore(loader: CommitTreeLoader(git: GitCLIService()))
+    }
+
     /// The roots the scanner should walk: the user's configured roots when set, else the built-in
     /// dev roots — resolved in one place so the initial scan and every re-scan agree.
     @MainActor

@@ -17,17 +17,19 @@ struct ZeusApp: App {
     @State private var settings: SettingsStore
     @State private var hubData: HubDataStore
     @State private var orbitData: WorktreeOrbitStore
+    @State private var treeData: CommitTreeStore
 
     init() {
         let settingsStore = SettingsStore(store: AppComposition.makeSettingsStore())
         _settings = State(initialValue: settingsStore)
         _hubData = State(initialValue: AppComposition.makeHubStore(settings: settingsStore))
         _orbitData = State(initialValue: AppComposition.makeOrbitStore())
+        _treeData = State(initialValue: AppComposition.makeTreeStore())
     }
 
     var body: some Scene {
         WindowGroup {
-            ContentView(hubData: hubData, orbitData: orbitData, settings: settings)
+            ContentView(hubData: hubData, orbitData: orbitData, treeData: treeData, settings: settings)
         }
         .defaultSize(width: 1320, height: 860)
 
