@@ -29,6 +29,19 @@ struct NavigationReducerTests {
         #expect(s.phase == .idle)
     }
 
+    @Test func diveCarriesTheRepoPathSoTheOrbitLevelCanLoadRealGit() {
+        var s = NavigationState.initial   // hub / idle
+
+        s = reduce(s, .dive(to: .work, focal: p1,
+                            context: DiveContext(project: "tuntun-api",
+                                                 projectPath: "/Users/me/code/tuntun-api")))
+        // Path, like the display name, is applied at phaseAdvance for the animated dive.
+        s = reduce(s, .phaseAdvance)
+        #expect(s.view == .work)
+        #expect(s.project == "tuntun-api")
+        #expect(s.projectPath == "/Users/me/code/tuntun-api")
+    }
+
     @Test func diveIsIgnoredWhileNotIdle() {
         var s = NavigationState.initial
         s = reduce(s, .dive(to: .work, focal: p1, context: DiveContext(project: "a")))

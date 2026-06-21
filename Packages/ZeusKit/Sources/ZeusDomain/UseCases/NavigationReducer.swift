@@ -83,6 +83,7 @@ public enum NavigationReducer {
 
     private static func apply(_ context: DiveContext, to s: inout NavigationState) {
         if let project = context.project { s.project = project }
+        if let projectPath = context.projectPath { s.projectPath = projectPath }
         if let branch = context.worktreeBranch { s.worktreeBranch = branch }
         if let tip = context.tip { s.tip = tip; s.head = tip; s.selected = tip }
     }

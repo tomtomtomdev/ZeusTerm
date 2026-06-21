@@ -6,10 +6,15 @@ public enum Level: Sendable, Hashable { case hub, work, tree }
 /// Context carried by a dive: what to select once the incoming level mounts.
 public struct DiveContext: Sendable, Hashable {
     public var project: String?
+    /// The repo's filesystem path (the hub star's `id`) — carried so the worktree level can load
+    /// that repo's real git data. Distinct from `project`, which is the human display name.
+    public var projectPath: String?
     public var worktreeBranch: String?
     public var tip: String?     // when diving into a worktree, HEAD/selected reset to this
-    public init(project: String? = nil, worktreeBranch: String? = nil, tip: String? = nil) {
-        self.project = project; self.worktreeBranch = worktreeBranch; self.tip = tip
+    public init(project: String? = nil, projectPath: String? = nil,
+                worktreeBranch: String? = nil, tip: String? = nil) {
+        self.project = project; self.projectPath = projectPath
+        self.worktreeBranch = worktreeBranch; self.tip = tip
     }
 }
 
@@ -34,6 +39,8 @@ public struct NavigationState: Sendable, Hashable {
     public var enterOrigin: StagePoint
     public var origins: [StagePoint]      // focal-node stack, one per level dived into
     public var project: String?
+    /// Filesystem path of the dived-into repo — the key the worktree level loads real git from.
+    public var projectPath: String?
     public var worktreeBranch: String?
     public var head: String               // checked-out commit (visual-only checkout)
     public var selected: String           // commit shown in the Changes panel
@@ -54,6 +61,7 @@ public struct NavigationState: Sendable, Hashable {
                 enterOrigin: StagePoint = StagePoint(x: 520, y: 262),
                 origins: [StagePoint] = [],
                 project: String? = nil,
+                projectPath: String? = nil,
                 worktreeBranch: String? = nil,
                 head: String = "",
                 selected: String = "",
@@ -61,7 +69,8 @@ public struct NavigationState: Sendable, Hashable {
                 reduceMotion: Bool = false) {
         self.view = view; self.phase = phase; self.dir = dir
         self.leaveOrigin = leaveOrigin; self.enterOrigin = enterOrigin; self.origins = origins
-        self.project = project; self.worktreeBranch = worktreeBranch
+        self.project = project; self.projectPath = projectPath
+        self.worktreeBranch = worktreeBranch
         self.head = head; self.selected = selected; self.tip = tip
         self.reduceMotion = reduceMotion
     }
