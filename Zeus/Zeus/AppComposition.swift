@@ -33,7 +33,9 @@ enum AppComposition {
     /// the Hub stays live (P3-D.3): a new/removed repo, a commit, or a working-tree edit refreshes
     /// the constellation without a relaunch. `ChangeRelevance` is handed the *same* pruned-dir set
     /// the scanner walks with, so the two filters can't drift (e.g. an `npm install` under
-    /// `node_modules` is ignored by both).
+    /// `node_modules` is ignored by both). A `FullDiskAccessProbe` lets the store nudge the user
+    /// when live refresh is configured on a TCC-protected root but the app lacks Full Disk Access
+    /// (FSEvents silently never fires there without it — P3-D, FDA hint).
     @MainActor
     static func makeHubStore(settings: SettingsStore) -> HubDataStore {
         HubDataStore(
@@ -42,7 +44,8 @@ enum AppComposition {
                                   index: makeIndexStore()),
             roots: effectiveRoots(for: settings),
             watcher: FSEventsWatcher(),
-            relevance: ChangeRelevance(prunedDirectoryNames: ProjectScanner.defaultPruned))
+            relevance: ChangeRelevance(prunedDirectoryNames: ProjectScanner.defaultPruned),
+            fullDiskAccess: FullDiskAccessProbe())
     }
 
     /// The roots the scanner should walk: the user's configured roots when set, else the built-in

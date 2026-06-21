@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import ZeusDomain
 
 /// The constellation window (SPEC §7): a 54px topbar, a body of { 236px rail | zoom canvas }, and
@@ -32,6 +33,10 @@ public struct ConstellationShell<TerminalContent: View>: View {
                                 onCrumb: { store.dispatch(.backTo($0)) },
                                 onToggleTheme: { theme = theme.toggled })
             Divider().overlay(theme.accentSoft)
+            if hubData?.liveRefreshNeedsFullDiskAccess == true {
+                FullDiskAccessBanner(theme: theme) { hubData?.dismissFullDiskAccessHint() }
+                Divider().overlay(theme.accentSoft)
+            }
             HStack(spacing: 0) {
                 ConstellationRail(theme: theme)
                 Divider().overlay(theme.accentSoft)
@@ -249,6 +254,54 @@ struct BackPill: View {
         .background(.ultraThinMaterial, in: Capsule())
         .overlay(Capsule().stroke(theme.accentSoft, lineWidth: 1))
         .accessibilityLabel("Back")
+    }
+}
+
+// MARK: - Full Disk Access hint banner
+
+/// Slim, dismissible banner shown when live refresh needs Full Disk Access (P3-D, FDA hint):
+/// FSEvents won't fire on TCC-protected roots without it, so the constellation paints the last scan
+/// but never updates on its own. The scan still works, so this nudges rather than blocks. UI glue
+/// (the NSWorkspace deep link can't be unit-tested → proven via /verify); *whether* it shows is
+/// decided by the tested `HubDataStore` + `FullDiskAccessHint`.
+struct FullDiskAccessBanner: View {
+    let theme: Theme
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(theme.statusColor(.dirty))
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Live updates need Full Disk Access")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(theme.textHi)
+                Text("Your projects still load, but the constellation won't refresh on its own until you grant access.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(theme.textMid)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 12)
+            Button("Open Settings…") { Self.openFullDiskAccessSettings() }
+                .buttonStyle(.borderless)
+                .foregroundStyle(theme.gold)
+            Button(action: onDismiss) {
+                Image(systemName: "xmark").font(.system(size: 11, weight: .semibold))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(theme.textDim)
+            .accessibilityLabel("Dismiss Full Disk Access notice")
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(theme.statusColor(.dirty).opacity(0.12))
+    }
+
+    /// Deep-links to System Settings → Privacy & Security → Full Disk Access.
+    static func openFullDiskAccessSettings() {
+        guard let url = URL(string:
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") else { return }
+        NSWorkspace.shared.open(url)
     }
 }
 
