@@ -25,7 +25,13 @@ public struct RescanPlan: Equatable, Sendable {
 public struct IncrementalRescanPlanner: Sendable {
     public init() {}
 
-    public func plan(cached: [IndexEntry], observed: [IndexEntry]) -> RescanPlan {
+    /// `changedPaths` (P3-D.3 finding #2) are the paths FSEvents reported since the last scan. A
+    /// known repo whose HEAD is unchanged but which has a changed path *under* it is rerouted from
+    /// `reuse` to `refresh`, so a working-tree flip (clean↔dirty, no commit) re-reads its status
+    /// instead of keeping the stale cached one. Empty (the default — `load`/`reload`/cold start) =
+    /// the original HEAD-only bucketing.
+    public func plan(cached: [IndexEntry], observed: [IndexEntry],
+                     changedPaths: Set<String> = []) -> RescanPlan {
         // `cached` is path-unique (loaded from a path-keyed store); the closure is just a
         // defensive no-op should that ever loosen — last row wins, arbitrary but harmless here.
         let cachedByPath = Dictionary(cached.map { ($0.path, $0) }, uniquingKeysWith: { _, latest in latest })
@@ -34,9 +40,11 @@ public struct IncrementalRescanPlanner: Sendable {
         var reuse: [IndexEntry] = []
         var refresh: [IndexEntry] = []
         for current in observed {
-            // Unchanged HEAD on a known repo → keep the cached row untouched (no re-read).
-            // New repo, or HEAD moved (including HEAD becoming readable), → full re-read.
-            if let prior = cachedByPath[current.path], prior.headSHA == current.headSHA {
+            // Reuse only a known repo whose HEAD is unchanged AND whose working tree is quiet
+            // (no reported change under it). New/HEAD-moved repos, or a touched working tree, →
+            // full re-read.
+            if let prior = cachedByPath[current.path], prior.headSHA == current.headSHA,
+               !changedPaths.contains(where: { isPath($0, under: current.path) }) {
                 reuse.append(prior)
             } else {
                 refresh.append(current)
@@ -44,5 +52,21 @@ public struct IncrementalRescanPlanner: Sendable {
         }
         let remove = cached.filter { !observedPaths.contains($0.path) }
         return RescanPlan(reuse: reuse, refresh: refresh, remove: remove)
+    }
+
+    /// True when `changed` is the repo directory itself or a descendant of it. The trailing slash
+    /// keeps a sibling like `/w/apple` from matching a repo at `/w/app`. Both sides are collapsed
+    /// through the macOS `/private` firmlink first, because FSEvents reports temp roots as
+    /// `/private/var/…` while the scanner's `url.path` says `/var/…` — without this they'd never
+    /// match for a `/tmp`- or `/var`-rooted repo.
+    private func isPath(_ changed: String, under repo: String) -> Bool {
+        let changed = canonical(changed), repo = canonical(repo)
+        return changed == repo || changed.hasPrefix(repo + "/")
+    }
+
+    /// Strips the macOS `/private` firmlink prefix so `/private/var/x` and `/var/x` (the same file)
+    /// compare equal. Pure string work — no filesystem access — so the planner stays a pure decision.
+    private func canonical(_ path: String) -> String {
+        path.hasPrefix("/private/") ? String(path.dropFirst("/private".count)) : path
     }
 }

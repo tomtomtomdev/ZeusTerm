@@ -252,6 +252,27 @@ struct HubDataStoreTests {
         #expect(scanner.scanCount == 1)
     }
 
+    @Test func aChangedPathUnderAQuietRepoReReadsItsStatusSoAFlipGoesLive() async {
+        // P3-D.3 finding #2: the working tree flipped clean→dirty without a commit (HEAD unchanged).
+        // The store must thread the changed path into the rescan so the repo re-reads its status —
+        // otherwise HEAD-only reuse keeps the stale cached `.clean`.
+        let web = URL(fileURLWithPath: "/w/web")
+        let index = StubIndex([
+            IndexEntry(path: "/w/web", headSHA: "h", type: .frontend, status: .clean, lastScanned: t0),
+        ])
+        let scanner = StubScanner(repos: [web], entries: ["/w/web": ["package.json"]])
+        let git = StubGit(statuses: ["/w/web": .dirty], heads: ["/w/web": "h"])   // HEAD unchanged
+        let store = HubDataStore(
+            loader: HubDataLoader(scanner: scanner, git: git, index: index),
+            roots: [URL(fileURLWithPath: "/w")],
+            clock: ImmediateClock())
+
+        store.noteChange(at: "/w/web/Sources/main.swift")
+        await store.waitForRefresh()
+
+        #expect(store.hub?.stars.contains { $0.name == "web" && $0.status == .dirty } == true)
+    }
+
     @Test func startWatchingReconcilesWhenTheWatcherReportsARelevantChange() async {
         let web = URL(fileURLWithPath: "/w/web")
         let scanner = CountingScanner(repos: [web], entries: ["/w/web": ["package.json"]])

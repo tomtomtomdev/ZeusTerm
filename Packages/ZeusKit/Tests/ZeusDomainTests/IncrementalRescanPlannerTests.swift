@@ -9,15 +9,20 @@ import Testing
 ///   • refresh — new repo, or HEAD moved → needs a full classify + status read
 ///   • remove  — was indexed but is gone from disk → drop from the index/hub
 /// Pure set reconciliation keyed on path — no git, no filesystem, no clock. The adapter
-/// (P3-D.2) reads the cheap HEAD shas and persists the result; this just decides.
+/// (P3-D.2) reads the cheap HEAD shas and persists the result; this just decides. `changedPaths`
+/// (P3-D.3) lets a working-tree flip override HEAD-only reuse.
 ///
 /// Test List:
-///  [x] empty cache + empty scan            → empty plan
-///  [x] observed repo absent from cache      → refresh (new)
-///  [x] cached repo absent from scan         → remove (gone)
-///  [x] in both, same HEAD                    → reuse
-///  [x] in both, HEAD moved                   → refresh (changed)
-///  [x] HEAD became readable (nil → sha)      → refresh
+///  [x] empty cache + empty scan                 → empty plan
+///  [x] observed repo absent from cache           → refresh (new)
+///  [x] cached repo absent from scan              → remove (gone)
+///  [x] in both, same HEAD                         → reuse
+///  [x] in both, HEAD moved                        → refresh (changed)
+///  [x] HEAD became readable (nil → sha)           → refresh
+///  [x] unchanged HEAD + changed path under it     → refresh (working-tree flip, D.3 #2)
+///  [x] unchanged HEAD + change elsewhere          → reuse (optimization holds)
+///  [x] change under a prefix-sharing sibling      → reuse (directory-boundary match)
+///  [x] change via /private firmlink vs /var repo  → refresh (macOS path canonicalisation)
 ///  [x] mixed scenario covering all buckets at once
 struct IncrementalRescanPlannerTests {
 
@@ -88,6 +93,65 @@ struct IncrementalRescanPlannerTests {
         let plan = IncrementalRescanPlanner().plan(cached: [cached], observed: [nowHasHead])
 
         #expect(plan.refresh == [nowHasHead])
+        #expect(plan.reuse.isEmpty)
+    }
+
+    // P3-D.3 finding #2: a working-tree flip (clean↔dirty) doesn't move HEAD, so HEAD-only
+    // bucketing would reuse the stale cached status. When FSEvents reports a changed path *under*
+    // a HEAD-unchanged repo, reroute it to `refresh` so its status re-reads — status flips go live.
+    @Test func unchangedHeadButAChangedPathUnderItIsRefreshed() {
+        let cached = entry("/w/app", head: "ccc")
+        let observed = entry("/w/app", head: "ccc")        // HEAD unchanged
+
+        let plan = IncrementalRescanPlanner().plan(
+            cached: [cached], observed: [observed],
+            changedPaths: ["/w/app/src/main.swift"])
+
+        #expect(plan.refresh == [observed])
+        #expect(plan.reuse.isEmpty)
+    }
+
+    @Test func unchangedHeadWithNoChangedPathUnderItStaysReused() {
+        // A change landed elsewhere, not under this repo → the incremental optimization holds:
+        // a quiet repo is still reused from cache, never needlessly re-read.
+        let cached = IndexEntry(path: "/w/app", headSHA: "ccc", lastScanned: t0)
+        let observed = entry("/w/app", head: "ccc")
+
+        let plan = IncrementalRescanPlanner().plan(
+            cached: [cached], observed: [observed],
+            changedPaths: ["/w/other/file.txt"])
+
+        #expect(plan.reuse == [cached])
+        #expect(plan.refresh.isEmpty)
+    }
+
+    @Test func aChangeUnderASiblingWhoseNameSharesAPrefixDoesNotRefresh() {
+        // `/w/apple` is NOT under `/w/app` — the path predicate must require a directory boundary,
+        // not a bare string prefix, or every edit in a similarly-named sibling would re-read.
+        let cached = IndexEntry(path: "/w/app", headSHA: "ccc", lastScanned: t0)
+        let observed = entry("/w/app", head: "ccc")
+
+        let plan = IncrementalRescanPlanner().plan(
+            cached: [cached], observed: [observed],
+            changedPaths: ["/w/apple/main.swift"])
+
+        #expect(plan.reuse == [cached])
+        #expect(plan.refresh.isEmpty)
+    }
+
+    @Test func aChangedPathReportedThroughThePrivateFirmlinkStillMatchesItsRepo() {
+        // FSEvents canonicalises temp roots through the macOS /private firmlink — it reports
+        // /private/var/… while the scanner's url.path says /var/… (see FSEventsWatcherTests). The
+        // under-check must see through that, or a working-tree flip in a /tmp- or /var-rooted repo
+        // would never re-read its status.
+        let cached = IndexEntry(path: "/var/folders/xy/app", headSHA: "ccc", lastScanned: t0)
+        let observed = entry("/var/folders/xy/app", head: "ccc")
+
+        let plan = IncrementalRescanPlanner().plan(
+            cached: [cached], observed: [observed],
+            changedPaths: ["/private/var/folders/xy/app/Sources/main.swift"])
+
+        #expect(plan.refresh == [observed])
         #expect(plan.reuse.isEmpty)
     }
 

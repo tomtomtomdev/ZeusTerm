@@ -53,7 +53,12 @@ public struct HubDataLoader: Sendable {
     /// falls back to an empty cache (so every repo looks new — a correct, if non-incremental,
     /// full rescan); per-repo HEAD/classify/status failures are isolated; and the index *writes*
     /// are best-effort, so a transient persistence error never blanks an already-correct hub.
-    public func rescan(roots: [URL]) async throws -> HubModel {
+    ///
+    /// `changedPaths` (P3-D.3 finding #2) are the paths FSEvents reported since the last reconcile.
+    /// A HEAD-unchanged repo with a changed path under it is rerouted from reuse to refresh so its
+    /// working-tree status re-reads (a clean↔dirty flip with no commit goes live). Empty (the
+    /// default — cold start / a roots change) keeps the pure HEAD-only incremental bucketing.
+    public func rescan(roots: [URL], changedPaths: Set<String> = []) async throws -> HubModel {
         let urls = try await scanner.discoverRepositoryURLs(under: roots)
 
         var cached: [IndexEntry] = []
@@ -71,7 +76,8 @@ public struct HubDataLoader: Sendable {
             let head: String? = (try? await git.headSHA(at: url)) ?? nil
             observed.append(IndexEntry(path: url.path, headSHA: head, lastScanned: now()))
         }
-        let plan = IncrementalRescanPlanner().plan(cached: cached, observed: observed)
+        let plan = IncrementalRescanPlanner().plan(cached: cached, observed: observed,
+                                                   changedPaths: changedPaths)
 
         // The expensive part, paid only for what changed; reuse rows already carry type+status.
         var refreshed: [IndexEntry] = []

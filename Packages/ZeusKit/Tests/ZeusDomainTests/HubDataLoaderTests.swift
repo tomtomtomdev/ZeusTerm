@@ -212,6 +212,44 @@ struct HubDataLoaderTests {
         #expect(await store.upserted.isEmpty)     // reuse → no write
     }
 
+    @Test func rescanReReadsStatusForAHeadUnchangedRepoWithAChangedPathUnderIt() async throws {
+        // P3-D.3 finding #2: the working tree flipped clean→dirty without a commit. HEAD is
+        // unchanged, so HEAD-only reuse would keep the stale cached `.clean`. A changed path under
+        // the repo forces a re-read so the live status surfaces.
+        let store = SpyIndexStore(stored: [
+            IndexEntry(path: "/w/app", headSHA: "h", type: .frontend, status: .clean, lastScanned: t0),
+        ])
+        let app = URL(fileURLWithPath: "/w/app")
+        let scanner = StubScanner(repos: [app], entries: ["/w/app": ["package.json"]])
+        let git = StubGit(statuses: ["/w/app": .dirty], heads: ["/w/app": "h"])   // HEAD unchanged
+        let loader = HubDataLoader(scanner: scanner, git: git, index: store, now: { self.t0 })
+
+        let model = try await loader.rescan(roots: [], changedPaths: ["/w/app/Sources/main.swift"])
+        let member = try #require(model.clusters.flatMap(\.members).first { $0.id == "/w/app" })
+
+        #expect(member.status == .dirty)                                  // re-read, not the cached clean
+        let row = try #require(await store.upserted.first { $0.path == "/w/app" })
+        #expect(row.status == .dirty && row.headSHA == "h")               // persisted, HEAD preserved
+    }
+
+    @Test func rescanWithoutChangedPathsKeepsTheCachedStatusForAQuietRepo() async throws {
+        // No changed path under the repo → the incremental optimization holds: reuse the cached
+        // payload, never re-read (git has no status for it, which a re-read would drop to .clean).
+        let store = SpyIndexStore(stored: [
+            IndexEntry(path: "/w/app", headSHA: "h", type: .frontend, status: .dirty, lastScanned: t0),
+        ])
+        let app = URL(fileURLWithPath: "/w/app")
+        let scanner = StubScanner(repos: [app], entries: ["/w/app": ["package.json"]])
+        let git = StubGit(heads: ["/w/app": "h"])                         // HEAD unchanged, no status
+        let loader = HubDataLoader(scanner: scanner, git: git, index: store, now: { self.t0 })
+
+        let model = try await loader.rescan(roots: [])                    // no changedPaths
+        let member = try #require(model.clusters.flatMap(\.members).first { $0.id == "/w/app" })
+
+        #expect(member.status == .dirty)                                  // cached payload reused
+        #expect(await store.upserted.isEmpty)                             // reuse → no write
+    }
+
     // MARK: - Tests — rescan with no index (full-scan path: every repo looks new → classified fresh)
 
     @Test func rescanWithoutIndexUsesRepoPathAsStableIdSoDuplicateNamesDoNotCollide() async throws {

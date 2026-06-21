@@ -29,6 +29,9 @@ public final class HubDataStore {
     @ObservationIgnored private let debounce: Duration
     @ObservationIgnored private var watchTask: Task<Void, Never>?
     @ObservationIgnored private var refreshTask: Task<Void, Never>?
+    /// Relevant paths reported by the watcher since the last reconcile, drained into the rescan so a
+    /// HEAD-unchanged repo with a touched working tree re-reads its status (P3-D.3 finding #2).
+    @ObservationIgnored private var pendingChangedPaths: Set<String> = []
 
     public init(loader: HubDataLoader,
                 roots: [URL],
@@ -98,6 +101,7 @@ public final class HubDataStore {
     /// Internal so the relevance + debounce behavior is unit-testable without driving the watcher.
     func noteChange(at path: String) {
         guard relevance.isRelevant(changedPath: path) else { return }
+        pendingChangedPaths.insert(path)
         scheduleRefresh()
     }
 
@@ -122,9 +126,14 @@ public final class HubDataStore {
     }
 
     /// Reconcile against disk and republish, keeping the current hub if the rescan fails — a
-    /// transient scan error must never blank an already-painted constellation.
+    /// transient scan error must never blank an already-painted constellation. Drains the changed
+    /// paths accumulated since the last reconcile so a HEAD-unchanged repo with a touched working
+    /// tree re-reads its status (P3-D.3 finding #2); they're cleared up front so a change arriving
+    /// mid-rescan accumulates afresh and arms the next debounce rather than being lost.
     private func refresh() async {
-        do { publish(try await loader.rescan(roots: roots)) }
+        let changed = pendingChangedPaths
+        pendingChangedPaths = []
+        do { publish(try await loader.rescan(roots: roots, changedPaths: changed)) }
         catch { /* keep the current hub */ }
     }
 
