@@ -59,6 +59,14 @@ public protocol FileSystemWatching: Sendable {
     func changes(under roots: [URL]) -> AsyncStream<String>
 }
 
+/// Reports whether the app has Full Disk Access (P3-D, FDA hint). FSEvents live-refresh needs it on
+/// TCC-protected roots; the pure `FullDiskAccessHint` rule turns this plus the watched roots into a
+/// decision to nudge the user. The adapter (ZeusScanner) probes a TCC-gated path; no Apple API
+/// reports the grant directly.
+public protocol FullDiskAccessChecking: Sendable {
+    func hasFullDiskAccess() -> Bool
+}
+
 /// Provides command autosuggestions for the right-arrow accept feature (#4).
 public protocol SuggestionProviding: Sendable {
     func suggestions(for input: String, cwd: URL) async -> [String]
