@@ -16,6 +16,7 @@ let package = Package(
         .library(name: "ZeusGit", targets: ["ZeusGit"]),
         .library(name: "ZeusScanner", targets: ["ZeusScanner"]),
         .library(name: "ZeusIndex", targets: ["ZeusIndex"]),
+        .library(name: "ZeusSettingsStore", targets: ["ZeusSettingsStore"]),
         .library(name: "ZeusTerminal", targets: ["ZeusTerminal"]),
         .library(name: "ZeusSuggest", targets: ["ZeusSuggest"]),
         .library(name: "ZeusUI", targets: ["ZeusUI"]),
@@ -52,6 +53,9 @@ let package = Package(
             ]
         ),
         .target(name: "ZeusSuggest", dependencies: ["ZeusDomain"]),
+        // SettingsStoring adapter. Isolated target so SwiftData stays out of domain/other
+        // consumers (Common-Reuse Principle), mirroring how ZeusIndex isolates GRDB.
+        .target(name: "ZeusSettingsStore", dependencies: ["ZeusDomain"]),
         .target(name: "ZeusUI", dependencies: ["ZeusDomain"]),
         .executableTarget(
             name: "S1TerminalSpike",
@@ -74,6 +78,7 @@ let package = Package(
         ),
         .testTarget(name: "ZeusTerminalTests", dependencies: ["ZeusTerminal"]),
         .testTarget(name: "ZeusSuggestTests", dependencies: ["ZeusSuggest"]),
+        .testTarget(name: "ZeusSettingsStoreTests", dependencies: ["ZeusSettingsStore"]),
         .testTarget(name: "ZeusUITests", dependencies: ["ZeusUI"]),
     ]
 )
