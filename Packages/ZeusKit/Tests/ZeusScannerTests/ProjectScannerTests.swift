@@ -23,6 +23,29 @@ struct ProjectScannerTests {
         #expect(!found.contains { $0.path.contains("node_modules") })
     }
 
+    @Test func doesNotIndexRepositoriesNestedInsideADiscoveredRepo() async throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent("zeus-nested-\(UUID().uuidString)")
+        defer { try? fm.removeItem(at: root) }
+
+        // A real top-level repo.
+        let repo = root.appendingPathComponent("myapp")
+        try fm.createDirectory(at: repo.appendingPathComponent(".git"),
+                               withIntermediateDirectories: true)
+        // A vendored dependency repo nested in the app's build output. `build` is NOT in the
+        // pruned set, yet a repo's internals (deps, submodules, build artifacts) must never be
+        // indexed as separate top-level projects. Regression: a SwiftPM checkout under
+        // <repo>/build/SourcePackages/checkouts was surfacing as its own "swift-collections" repo.
+        try fm.createDirectory(
+            at: repo.appendingPathComponent("build/SourcePackages/checkouts/swift-collections/.git"),
+            withIntermediateDirectories: true)
+
+        let found = try await ProjectScanner().discoverRepositoryURLs(under: [root])
+
+        #expect(found.map(\.lastPathComponent) == ["myapp"])
+        #expect(!found.contains { $0.path.contains("swift-collections") })
+    }
+
     @Test func listsRootEntryNamesForClassification() throws {
         let fm = FileManager.default
         let repo = fm.temporaryDirectory.appendingPathComponent("zeus-entries-\(UUID().uuidString)")

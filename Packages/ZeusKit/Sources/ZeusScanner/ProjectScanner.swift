@@ -47,6 +47,9 @@ public struct ProjectScanner: ProjectScanning {
         let fm = FileManager.default
         var found: [URL] = []
         var seen = Set<URL>()
+        func record(_ repo: URL) {
+            if seen.insert(repo).inserted { found.append(repo) }
+        }
 
         for root in roots {
             guard let enumerator = fm.enumerator(
@@ -58,11 +61,31 @@ public struct ProjectScanner: ProjectScanning {
 
             for case let url as URL in enumerator {
                 let name = url.lastPathComponent
+
+                // A `.git` entry (dir, or a worktree/submodule pointer file) marks its PARENT as a
+                // repo. This fires when a scan root is itself a repo, so the root's own `.git`
+                // surfaces as a top-level child. Don't descend into `.git`'s internals.
                 if name == ".git" {
-                    let repo = url.deletingLastPathComponent()
-                    if seen.insert(repo).inserted { found.append(repo) }
+                    record(url.deletingLastPathComponent())
                     enumerator.skipDescendants()
-                } else if prunedDirectoryNames.contains(name) {
+                    continue
+                }
+
+                // Skip heavy/build/dependency dirs by name before paying any stat cost.
+                if prunedDirectoryNames.contains(name) {
+                    enumerator.skipDescendants()
+                    continue
+                }
+
+                // A subdirectory that contains `.git` is a repo root: record it and prune its
+                // ENTIRE subtree. A repo's vendored deps, submodules, and build artifacts are not
+                // separate top-level projects — and `skipDescendants()` on the `.git` entry alone
+                // wouldn't stop the walk from descending into sibling dirs like `build/` (which
+                // isn't in the pruned set), where a SwiftPM checkout's nested `.git` would
+                // otherwise be mis-indexed as its own project.
+                let isDirectory = (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+                if isDirectory, fm.fileExists(atPath: url.appendingPathComponent(".git").path) {
+                    record(url)
                     enumerator.skipDescendants()
                 }
             }
