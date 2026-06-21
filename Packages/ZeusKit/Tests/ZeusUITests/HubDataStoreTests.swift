@@ -103,8 +103,16 @@ struct HubDataStoreTests {
         }
     }
 
+    /// Reports a fixed Full Disk Access grant — the store probes through this instead of the real
+    /// TCC database, so the hint logic is testable with synthetic roots and no host dependency.
+    private struct StubFDA: FullDiskAccessChecking {
+        let granted: Bool
+        func hasFullDiskAccess() -> Bool { granted }
+    }
+
     private enum StubError: Error { case scanFailed }
     private let t0 = Date(timeIntervalSince1970: 1_700_000_000)
+    private let home = URL(fileURLWithPath: "/Users/zeus")
 
     private func makeStore() -> HubDataStore {
         let scanner = StubScanner(repos: [URL(fileURLWithPath: "/w/web")],
@@ -271,6 +279,61 @@ struct HubDataStoreTests {
         await store.waitForRefresh()
 
         #expect(store.hub?.stars.contains { $0.name == "web" && $0.status == .dirty } == true)
+    }
+
+    // MARK: - P3-D (FDA hint): live refresh needs Full Disk Access on protected roots
+
+    @Test func loadFlagsThatLiveRefreshNeedsFDAWhenAccessIsMissingOnAProtectedRoot() async {
+        let store = HubDataStore(
+            loader: HubDataLoader(scanner: StubScanner(repos: [], entries: [:]), git: StubGit()),
+            roots: [home.appendingPathComponent("Documents")],
+            fullDiskAccess: StubFDA(granted: false),
+            home: home)
+
+        await store.load()
+
+        #expect(store.liveRefreshNeedsFullDiskAccess == true)
+    }
+
+    @Test func loadDoesNotFlagFDAWhenAccessIsGranted() async {
+        let store = HubDataStore(
+            loader: HubDataLoader(scanner: StubScanner(repos: [], entries: [:]), git: StubGit()),
+            roots: [home.appendingPathComponent("Documents")],
+            fullDiskAccess: StubFDA(granted: true),
+            home: home)
+
+        await store.load()
+
+        #expect(store.liveRefreshNeedsFullDiskAccess == false)
+    }
+
+    @Test func dismissingTheFDAHintKeepsItHiddenAcrossAReload() async {
+        let store = HubDataStore(
+            loader: HubDataLoader(scanner: StubScanner(repos: [], entries: [:]), git: StubGit()),
+            roots: [home.appendingPathComponent("Documents")],
+            fullDiskAccess: StubFDA(granted: false),
+            home: home)
+        await store.load()
+        #expect(store.liveRefreshNeedsFullDiskAccess == true)
+
+        store.dismissFullDiskAccessHint()
+        #expect(store.liveRefreshNeedsFullDiskAccess == false)
+
+        // A later reconcile (e.g. the user edited their roots) must not resurrect the dismissed hint.
+        await store.reload(roots: [home.appendingPathComponent("Documents")])
+        #expect(store.liveRefreshNeedsFullDiskAccess == false)
+    }
+
+    @Test func withoutAnFDACheckerTheHintNeverShows() async {
+        // Previews / non-live tests inject no checker → the hint stays off (no nagging, no probe).
+        let store = HubDataStore(
+            loader: HubDataLoader(scanner: StubScanner(repos: [], entries: [:]), git: StubGit()),
+            roots: [home.appendingPathComponent("Documents")],
+            home: home)
+
+        await store.load()
+
+        #expect(store.liveRefreshNeedsFullDiskAccess == false)
     }
 
     @Test func startWatchingReconcilesWhenTheWatcherReportsARelevantChange() async {

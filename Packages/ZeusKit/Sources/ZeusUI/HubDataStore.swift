@@ -20,6 +20,11 @@ public final class HubDataStore {
     /// nil until the first load completes (the view shows a scanning state or sample fallback).
     public private(set) var hub: ConstellationHub?
 
+    /// True when live refresh is configured on a TCC-protected root but the app lacks Full Disk
+    /// Access, so FSEvents never fires (P3-D, FDA hint). Drives a dismissible banner nudging the
+    /// user to grant access; the scan itself still works, only live updates are affected.
+    public private(set) var liveRefreshNeedsFullDiskAccess = false
+
     @ObservationIgnored private let loader: HubDataLoader
     @ObservationIgnored private let layout: ConstellationLayout
     @ObservationIgnored private var roots: [URL]
@@ -27,6 +32,9 @@ public final class HubDataStore {
     @ObservationIgnored private let relevance: ChangeRelevance
     @ObservationIgnored private let clock: any Clock<Duration>
     @ObservationIgnored private let debounce: Duration
+    @ObservationIgnored private let fullDiskAccess: (any FullDiskAccessChecking)?
+    @ObservationIgnored private let home: URL
+    @ObservationIgnored private var fdaHintDismissed = false
     @ObservationIgnored private var watchTask: Task<Void, Never>?
     @ObservationIgnored private var refreshTask: Task<Void, Never>?
     /// Relevant paths reported by the watcher since the last reconcile, drained into the rescan so a
@@ -39,7 +47,9 @@ public final class HubDataStore {
                 watcher: (any FileSystemWatching)? = nil,
                 relevance: ChangeRelevance = ChangeRelevance(),
                 clock: any Clock<Duration> = ContinuousClock(),
-                debounce: Duration = .milliseconds(300)) {
+                debounce: Duration = .milliseconds(300),
+                fullDiskAccess: (any FullDiskAccessChecking)? = nil,
+                home: URL = FileManager.default.homeDirectoryForCurrentUser) {
         self.loader = loader
         self.roots = roots
         self.layout = layout
@@ -47,6 +57,8 @@ public final class HubDataStore {
         self.relevance = relevance
         self.clock = clock
         self.debounce = debounce
+        self.fullDiskAccess = fullDiskAccess
+        self.home = home
     }
 
     deinit {
@@ -69,6 +81,7 @@ public final class HubDataStore {
             if hub == nil { publish(.empty) }
         }
         startWatching(roots: roots)
+        await updateFullDiskAccessHint(roots: roots)
     }
 
     /// Re-scans against `roots` and republishes — called when the user edits their scan roots in
@@ -79,6 +92,25 @@ public final class HubDataStore {
     public func reload(roots: [URL]) async {
         startWatching(roots: roots)
         await refresh()
+        await updateFullDiskAccessHint(roots: roots)
+    }
+
+    /// Recompute whether to nudge the user toward Full Disk Access for live refresh (P3-D, FDA hint).
+    /// The probe reads a file, so it runs off the main actor; the pure `FullDiskAccessHint` rule then
+    /// decides. No-op when no checker is injected (previews / non-live tests) or the user already
+    /// dismissed the hint this session.
+    private func updateFullDiskAccessHint(roots: [URL]) async {
+        guard !fdaHintDismissed, let fullDiskAccess else { return }
+        let hasAccess = await Task.detached { fullDiskAccess.hasFullDiskAccess() }.value
+        liveRefreshNeedsFullDiskAccess = FullDiskAccessHint.isNeeded(
+            hasAccess: hasAccess, roots: roots, home: home)
+    }
+
+    /// Hide the Full Disk Access hint for the rest of the session. It reappears on the next launch if
+    /// access is still missing — a deliberate, gentle nudge rather than a one-time dialog.
+    public func dismissFullDiskAccessHint() {
+        fdaHintDismissed = true
+        liveRefreshNeedsFullDiskAccess = false
     }
 
     /// (Re)starts the FSEvents subscription for `roots` (P3-D.3c) and adopts them as the roots a
