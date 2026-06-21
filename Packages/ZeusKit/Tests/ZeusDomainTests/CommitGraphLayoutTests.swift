@@ -29,6 +29,21 @@ struct CommitGraphLayoutTests {
         #expect(tree.edges.count == 2)
     }
 
+    @Test func carriesEachCommitSummaryOntoItsNode() {
+        // The branch-tree view labels each node with its commit message, so the layout must
+        // carry every commit's summary through onto the laid-out node — guards the data
+        // contract TreeLevelView renders (it shows `node.summary`, not the raw sha).
+        let commits = [
+            GraphCommit(sha: "a", summary: "init monorepo",     branch: "main", parents: []),
+            GraphCommit(sha: "b", summary: "add auth scaffold", branch: "main", parents: ["a"]),
+        ]
+        let tree = CommitGraphLayout().buildTree(commits: commits, lanes: ["main": 430], head: "b")
+        let node = Dictionary(uniqueKeysWithValues: tree.nodes.map { ($0.id, $0) })
+
+        #expect(node["a"]!.summary == "init monorepo")
+        #expect(node["b"]!.summary == "add auth scaffold")
+    }
+
     @Test func assignsLanesPerBranchAndLinksAcrossBranches() {
         // a(main) ← b(main) ← f(feature); HEAD is the tip f.
         let commits = [

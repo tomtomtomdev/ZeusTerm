@@ -139,6 +139,19 @@ struct HubLevelView: View {
                     .onTapGesture { if !star.isHub { onSelectRepo(star) } }
                     .accessibilityLabel(starLabel(star))
                     .accessibilityAddTraits(star.isHub ? [] : .isButton)
+
+                // Each repo star wears its project name (the cluster-type label names the group,
+                // not the project). The hub stays unlabeled here — it's visually distinct already.
+                // a11y lives on the disc above, so the label is hidden to avoid a duplicate read.
+                if !star.isHub {
+                    Text(star.name)
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundStyle(theme.textDim)
+                        .fixedSize()
+                        .position(x: star.point.x, y: star.point.y + 11)
+                        .allowsHitTesting(false)   // decorative — never steal a tap from a star
+                        .accessibilityHidden(true)
+                }
             }
         }
         .frame(width: StageGeometry.width, height: StageGeometry.height)
@@ -279,11 +292,18 @@ struct TreeLevelView: View {
                     .accessibilityLabel(commitLabel(node, isHead: isHead))
                     .accessibilityAddTraits(.isButton)
 
-                Text(node.id)
+                // The commit message reads better than a raw sha at a glance; the full sha still
+                // lives in the a11y label and the Changes panel. Capped + tail-truncated so a long
+                // subject can't sprawl across the lane.
+                Text(node.summary)
                     .font(.system(size: 9, design: .monospaced))
                     .foregroundStyle(theme.textDim)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(width: 240)
                     .position(x: node.point.x, y: node.point.y + 18)
                     .opacity(node.isDim ? 0.3 : 1)
+                    .allowsHitTesting(false)   // the 240pt label must not cover a neighbor node's tap
                     .accessibilityHidden(true)
             }
         }
