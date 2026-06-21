@@ -48,8 +48,7 @@ public final class HubDataStore {
 }
 
 private extension HubModel {
-    /// Just the central star — the neutral hub shown when there's nothing to display yet.
-    static var empty: HubModel {
-        HubModel(clusters: [], hub: HubInput(name: HubGeometry.hubName, center: HubGeometry.center))
-    }
+    /// Just the central star — the neutral hub shown when there's nothing to display yet. Built
+    /// through `HubModelBuilder` (with no repos) so the empty hub can't drift from a populated one.
+    static var empty: HubModel { HubModelBuilder().build(repos: []) }
 }

@@ -212,54 +212,35 @@ struct HubDataLoaderTests {
         #expect(await store.upserted.isEmpty)     // reuse → no write
     }
 
-    // MARK: - Tests — load (full scan, no index)
+    // MARK: - Tests — rescan with no index (full-scan path: every repo looks new → classified fresh)
 
-    @Test func loadClassifiesAndStatusesReposIntoHubModelClusters() async throws {
-        let web = URL(fileURLWithPath: "/work/web")
-        let api = URL(fileURLWithPath: "/work/api")
-        let scanner = StubScanner(
-            repos: [web, api],
-            entries: ["/work/web": ["package.json"], "/work/api": ["go.mod"]])
-        let git = StubGit(statuses: ["/work/web": .dirty, "/work/api": .clean])
-
-        let model = try await HubDataLoader(scanner: scanner, git: git)
-            .load(roots: [URL(fileURLWithPath: "/work")])
-
-        // package.json → Frontend, go.mod → Backend (canonical order).
-        #expect(model.clusters.map(\.type) == ["Frontend", "Backend"])
-        let frontend = try #require(model.clusters.first { $0.type == "Frontend" })
-        #expect(frontend.members.map(\.name) == ["web"])
-        #expect(frontend.members.map(\.status) == [.dirty])
-        let backend = try #require(model.clusters.first { $0.type == "Backend" })
-        #expect(backend.members.map(\.status) == [.clean])
-        #expect(model.hub.name == "All Projects")
-    }
-
-    @Test func loadUsesRepoPathAsStableIdSoDuplicateNamesDoNotCollide() async throws {
+    @Test func rescanWithoutIndexUsesRepoPathAsStableIdSoDuplicateNamesDoNotCollide() async throws {
         let a = URL(fileURLWithPath: "/work/a/api")
         let b = URL(fileURLWithPath: "/work/b/api")
         let scanner = StubScanner(
             repos: [a, b],
             entries: ["/work/a/api": ["go.mod"], "/work/b/api": ["go.mod"]])
 
-        let model = try await HubDataLoader(scanner: scanner, git: StubGit()).load(roots: [])
+        // No index → empty cache → every repo is new → full classify, exactly like the old path.
+        let model = try await HubDataLoader(scanner: scanner, git: StubGit()).rescan(roots: [])
 
         let backend = try #require(model.clusters.first { $0.type == "Backend" })
         #expect(backend.members.count == 2)
         #expect(Set(backend.members.map(\.id)) == ["/work/a/api", "/work/b/api"])
         #expect(backend.members.allSatisfy { $0.name == "api" })
+        #expect(model.hub.name == "All Projects")
     }
 
-    @Test func loadIsResilientWhenOneReposStatusFails() async throws {
+    @Test func rescanWithoutIndexIsResilientWhenOneReposStatusFails() async throws {
         let ok = URL(fileURLWithPath: "/work/ok")
         let broken = URL(fileURLWithPath: "/work/broken")
         let scanner = StubScanner(
             repos: [ok, broken],
             entries: ["/work/ok": ["go.mod"], "/work/broken": ["go.mod"]])
-        // `broken`'s status read throws — the load must still surface both repos.
+        // `broken`'s status read throws — the rescan must still surface both repos.
         let git = StubGit(statuses: ["/work/ok": .ahead], failingPaths: ["/work/broken"])
 
-        let model = try await HubDataLoader(scanner: scanner, git: git).load(roots: [])
+        let model = try await HubDataLoader(scanner: scanner, git: git).rescan(roots: [])
 
         let backend = try #require(model.clusters.first { $0.type == "Backend" })
         #expect(backend.members.count == 2)

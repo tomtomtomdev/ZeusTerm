@@ -10,7 +10,8 @@ public struct HubDataLoader: Sendable {
     private let classifier: RepoClassifier
     private let builder: HubModelBuilder
     /// Optional persisted index (P3-D.2c). When present, cold start paints `cachedHub()` from it
-    /// before `rescan(roots:)` reconciles; absent, the loader just does a full `load(roots:)`.
+    /// before `rescan(roots:)` reconciles; absent, `rescan(roots:)` falls back to a full scan —
+    /// the empty cache makes every repo look new, so each is classified fresh.
     private let index: (any RepositoryIndexStore)?
     /// Timestamp source for `IndexEntry.lastScanned` (injected so tests are deterministic). This is
     /// a clock for *stamping*, not for *delaying* — unlike `NavigationStore`'s `Clock<Duration>`,
@@ -61,6 +62,9 @@ public struct HubDataLoader: Sendable {
         // Cheap HEAD read per repo → the planner buckets reuse/refresh/remove on path + HEAD.
         // A thrown HEAD read collapses to nil here: the repo is still reconciled, but a transient
         // failure that flips a real sha→nil forces one extra refresh on the next clean scan.
+        // These per-repo reads (and the classify loop below) are sequential for now; bounded-
+        // concurrency is deferred to P3-D against the §4 S5 perf spike — an unbounded TaskGroup
+        // would spawn one `git` process per repo, which can be slower than it looks.
         var observed: [IndexEntry] = []
         observed.reserveCapacity(urls.count)
         for url in urls {
@@ -86,19 +90,6 @@ public struct HubDataLoader: Sendable {
             try? await index.remove(paths: plan.remove.map(\.path))
         }
         return hub
-    }
-
-    public func load(roots: [URL]) async throws -> HubModel {
-        let urls = try await scanner.discoverRepositoryURLs(under: roots)
-        // Per-repo reads are sequential for now. Bounded-concurrency parallelism (and
-        // caching) is deferred to P3-D against the §4 S5 perf spike — an unbounded TaskGroup
-        // would spawn one `git` process per repo, which can be slower than it looks.
-        var repos: [ClassifiedRepo] = []
-        repos.reserveCapacity(urls.count)
-        for url in urls {
-            repos.append(await classify(url))
-        }
-        return builder.build(repos: repos)
     }
 
     /// Classifies + reads status for one repo. Per-repo reads are resilient: an unreadable
