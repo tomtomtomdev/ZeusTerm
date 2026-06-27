@@ -17,8 +17,9 @@ import ZeusDomain
 @Observable
 public final class WorktreeOrbitStore {
     /// The canonical orbit-level center in stage space (matches the design prototype). The repo
-    /// star sits here and its worktree satellites orbit it.
-    public static let defaultCenter = StagePoint(x: 512, y: 256)
+    /// star sits here and its worktree satellites orbit it. `nonisolated` so the (nonisolated)
+    /// sample fixture can reference this single source of truth instead of re-hardcoding the point.
+    nonisolated public static let defaultCenter = StagePoint(x: 512, y: 256)
 
     /// nil until the first repo finishes loading and again while a new repo loads (so the view
     /// shows just the central star, never the previous repo's stale satellites).

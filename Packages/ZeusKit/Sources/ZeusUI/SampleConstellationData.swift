@@ -62,13 +62,14 @@ public enum SampleConstellationData {
 
     // MARK: - Worktree (orbit) level inputs
 
-    public static let worktreeCenter = StagePoint(x: 512, y: 256)
+    /// The orbit center is owned by `WorktreeOrbitStore` (the real orbit level) — reference it so the
+    /// sample can't drift from the center a live repo's worktrees orbit.
+    public static let worktreeCenter = WorktreeOrbitStore.defaultCenter
 
-    public static let rings: [RingSpec] = [
-        RingSpec(radius: 115, count: 3, angleOffset: 0.4),
-        RingSpec(radius: 180, count: 4, angleOffset: 0.85),
-        RingSpec(radius: 242, count: 3, angleOffset: 0.15),
-    ]
+    /// Sized by the real `OrbitRingPlanner` from the worktree count rather than hand-listed radii, so
+    /// the sample seats its 10 satellites on exactly the nested ellipses a real 10-worktree repo gets
+    /// — no copied 115/180/242 to drift. `OrbitRingPlannerTests` pins that 10-worktree progression.
+    public static let rings: [RingSpec] = OrbitRingPlanner().rings(forWorktreeCount: worktrees.count)
 
     public static let worktrees: [WorktreeInput] = [
         WorktreeInput(branch: "hotfix/payment-retry", name: "api-hotfix", status: .dirty),
