@@ -9,17 +9,12 @@ import ZeusDomain
 public struct ConstellationShell<TerminalContent: View>: View {
     @State private var store: NavigationStore
     @State private var theme: Theme
-    /// nil in previews / the ZoomSpike harness (Hub falls back to `SampleConstellationData`);
-    /// the app injects a real one so the Hub renders the live scan.
+    /// The four level stores. The app injects live-git stores; previews / ZoomSpike / `-uiTestFixtures`
+    /// inject sample-backed *fixture* stores (see `ConstellationShell.sample`). When a store is nil the
+    /// shell paints a neutral empty level — it never reaches for a specific fixture itself (slice 7(b)).
     @State private var hubData: HubDataStore?
-    /// nil in previews (the worktree level falls back to `SampleConstellationData`); the app injects
-    /// a real one so diving into a repo shows that repo's real worktrees loaded from git.
     @State private var orbitData: WorktreeOrbitStore?
-    /// nil in previews (the branch-tree level falls back to `SampleConstellationData`); the app
-    /// injects a real one so diving into a worktree shows that branch's real commit history.
     @State private var treeData: CommitTreeStore?
-    /// nil in previews (the Changes panel falls back to `SampleConstellationData`); the app injects a
-    /// real one so selecting a commit shows that commit's real changed files + unified diff.
     @State private var diffData: CommitDiffStore?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
@@ -96,42 +91,31 @@ public struct ConstellationShell<TerminalContent: View>: View {
         }
     }
 
-    /// Hub source: the live scan once loaded, an empty hub while scanning, and the sample
-    /// fixture when no real store is injected (previews / ZoomSpike).
+    /// Hub source: the store's hub once loaded, else a neutral empty hub (just the central star) —
+    /// shown while a real store scans, or whenever no store is injected at all.
     private var displayHub: ConstellationHub {
-        if let hubData { return hubData.hub ?? HubFallback.loading }
-        return SampleConstellationData.hub
+        hubData?.hub ?? HubFallback.loading
     }
 
     /// True while a real store is injected and its first scan hasn't completed.
     private var isScanning: Bool { hubData != nil && hubData?.hub == nil }
 
-    /// Worktree source: the dived-into repo's real orbits once loaded, an empty orbit (just the
-    /// repo star) while loading, and the sample fixture when no real store is injected (previews).
+    /// Worktree source: the store's orbits once loaded, else a neutral empty orbit (just the repo
+    /// star at the canonical center) — shown while loading or when no store is injected.
     private var displayOrbits: ConstellationOrbits {
-        if let orbitData {
-            return orbitData.orbits ?? .empty(center: WorktreeOrbitStore.defaultCenter)
-        }
-        return SampleConstellationData.orbits
+        orbitData?.orbits ?? .empty(center: WorktreeOrbitStore.defaultCenter)
     }
 
-    /// Branch-tree source: the dived-into worktree's real commit history once loaded, an empty tree
-    /// while loading, and the sample fixture when no real store is injected (previews).
+    /// Branch-tree source: the store's tree once loaded, else a neutral empty tree — shown while
+    /// loading or when no store is injected.
     private var displayTree: ConstellationTree {
-        if let treeData {
-            return treeData.tree ?? ConstellationTree(nodes: [], edges: [])
-        }
-        return SampleConstellationData.tree
+        treeData?.tree ?? ConstellationTree(nodes: [], edges: [])
     }
 
-    /// Changes-panel source: the selected commit's real diff once loaded, an empty diff for the
-    /// selected sha while loading (panel shows "No changes."), and the sample fixture when no real
-    /// store is injected (previews).
+    /// Changes-panel source: the store's diff once loaded, else a neutral empty diff for the selected
+    /// sha (panel shows "No changes.") — shown while loading or when no store is injected.
     private var displayDiff: CommitDiff {
-        if let diffData {
-            return diffData.diff ?? CommitDiff(sha: store.state.selected, files: [], patch: "")
-        }
-        return SampleConstellationData.diff(forSHA: store.state.selected)
+        diffData?.diff ?? CommitDiff(sha: store.state.selected, files: [], patch: "")
     }
 
     // MARK: Canvas (zoom stage + floating Back pill)
@@ -170,12 +154,11 @@ public struct ConstellationShell<TerminalContent: View>: View {
             }
         case .work:
             OrbitLevelView(orbits: displayOrbits, theme: theme) { sat in
-                // Real mode resets the tip to empty and resolves it from the loaded history
-                // (.branchTipResolved); previews/ZoomSpike keep the sample tip so the fixture tree
-                // still highlights HEAD without a real store.
+                // The tip is unknown at dive time; reset it to empty and let the tree store resolve it
+                // from the loaded history (.branchTipResolved), which lands HEAD/selected on the tip.
+                // Fixture stores publish their seeded tip the same way, so the flow is identical.
                 store.dispatch(.dive(to: .tree, focal: sat.point,
-                                     context: DiveContext(worktreeBranch: sat.branch,
-                                                          tip: treeData == nil ? SampleConstellationData.tipSHA : "")))
+                                     context: DiveContext(worktreeBranch: sat.branch, tip: "")))
             }
         case .tree:
             TreeLevelView(tree: displayTree,
@@ -195,8 +178,8 @@ public struct ConstellationShell<TerminalContent: View>: View {
             ZStack { theme.panel; terminalContent }
                 .frame(height: 196)
         case .changes:
-            // Commit header comes from the displayed tree; the diff comes from the live
-            // `CommitDiffStore` once injected (sample fixture only in previews / ZoomSpike).
+            // Commit header comes from the displayed tree; the diff comes from the injected
+            // `CommitDiffStore` (live git in the app, sample-backed in previews / `-uiTestFixtures`).
             let selected = displayTree.nodes.first { $0.id == store.state.selected }
             ChangesPanelView(commit: selected,
                              diff: displayDiff,
@@ -208,10 +191,32 @@ public struct ConstellationShell<TerminalContent: View>: View {
     }
 }
 
-// Convenience: a shell with the placeholder terminal (previews / before the live PTY is wired in).
+// Convenience: a sample-backed shell with the placeholder terminal (previews / `-uiTestFixtures`).
 extension ConstellationShell where TerminalContent == TerminalPlaceholder {
-    public init(theme: Theme = .dark, store: NavigationStore = NavigationStore()) {
-        self.init(theme: theme, store: store) { TerminalPlaceholder() }
+    @MainActor
+    public static func sample(theme: Theme = .dark) -> ConstellationShell {
+        sample(theme: theme) { TerminalPlaceholder() }
+    }
+}
+
+// MARK: - Sample-backed shell (slice 7(b))
+
+extension ConstellationShell {
+    /// Builds the shell over *fixture* stores seeded from `SampleConstellationData`, so the whole
+    /// constellation renders without a scan / git CLI / Full Disk Access. This is where the sample
+    /// lives now — the shell itself only ever sees stores, never a specific fixture. Used by the
+    /// SwiftUI previews, the ZoomSpike harness, and the deterministic `-uiTestFixtures` UI-test build.
+    @MainActor
+    public static func sample(theme: Theme = .dark,
+                              @ViewBuilder terminalContent: () -> TerminalContent) -> ConstellationShell {
+        ConstellationShell(
+            theme: theme,
+            hubData: HubDataStore(fixtureHub: SampleConstellationData.hub),
+            orbitData: WorktreeOrbitStore(fixtureOrbits: SampleConstellationData.orbits),
+            treeData: CommitTreeStore(fixtureTree: SampleConstellationData.tree,
+                                      fixtureTip: SampleConstellationData.tipSHA),
+            diffData: CommitDiffStore(fixtureDiff: SampleConstellationData.diff(forSHA:)),
+            terminalContent: terminalContent)
     }
 }
 
@@ -416,11 +421,11 @@ struct ScanningIndicator: View {
 }
 
 #Preview("Hub") {
-    ConstellationShell(theme: .dark)
+    ConstellationShell.sample(theme: .dark)
         .frame(width: 1040, height: 720)
 }
 
 #Preview("Light") {
-    ConstellationShell(theme: .light)
+    ConstellationShell.sample(theme: .light)
         .frame(width: 1040, height: 720)
 }

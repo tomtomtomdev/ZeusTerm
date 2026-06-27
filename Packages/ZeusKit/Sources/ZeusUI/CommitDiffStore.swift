@@ -18,11 +18,23 @@ public final class CommitDiffStore {
     /// panel never shows the previously-selected commit's stale diff).
     public private(set) var diff: CommitDiff?
 
-    @ObservationIgnored private let loader: CommitDiffLoader
+    /// nil only for a fixture store (no git): then `load` publishes `fixtureDiff(sha)` instead.
+    @ObservationIgnored private let loader: CommitDiffLoader?
+    /// Per-sha diff source for a fixture store; nil for a real (loader-backed) store.
+    @ObservationIgnored private let fixtureDiff: (@Sendable (String) -> CommitDiff)?
     @ObservationIgnored private var loadTask: Task<Void, Never>?
 
     public init(loader: CommitDiffLoader) {
         self.loader = loader
+        self.fixtureDiff = nil
+    }
+
+    /// Fixture seam (slice 7(b)): a store with no loader that resolves each selected commit's diff
+    /// from `fixtureDiff` (the sample diffs) instead of `git show`, so the Changes panel swaps per
+    /// selection in previews / `-uiTestFixtures` exactly as it does against real git.
+    public init(fixtureDiff: @escaping @Sendable (String) -> CommitDiff) {
+        self.loader = nil
+        self.fixtureDiff = fixtureDiff
     }
 
     deinit { loadTask?.cancel() }
@@ -34,10 +46,17 @@ public final class CommitDiffStore {
     public func load(repoPath: URL, sha: String) {
         loadTask?.cancel()
         diff = nil
+        guard let loader else {                       // fixture store: resolve the sample diff, no git
+            loadTask = Task { [weak self] in
+                guard let self, !Task.isCancelled else { return }   // a newer selection supersedes this
+                self.diff = self.fixtureDiff?(sha)
+            }
+            return
+        }
         loadTask = Task { [weak self] in
             guard let self else { return }
             do {
-                let loaded = try await self.loader.load(repoPath: repoPath, sha: sha)
+                let loaded = try await loader.load(repoPath: repoPath, sha: sha)
                 if Task.isCancelled { return }
                 self.diff = loaded
             } catch {

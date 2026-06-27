@@ -39,7 +39,7 @@ struct ZeusApp: App {
     var body: some Scene {
         WindowGroup {
             if uiTestFixtures {
-                ConstellationShell(theme: .dark)
+                ConstellationShell.sample(theme: .dark)
                     .frame(minWidth: 1100, minHeight: 720)
             } else {
                 ContentView(hubData: hubData, orbitData: orbitData, treeData: treeData,

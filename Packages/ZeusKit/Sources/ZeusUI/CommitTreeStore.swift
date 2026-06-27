@@ -26,13 +26,31 @@ public final class CommitTreeStore {
     /// The branch's newest commit sha once loaded; nil while loading, on failure, or empty history.
     public private(set) var tip: String?
 
-    @ObservationIgnored private let loader: CommitTreeLoader
+    /// nil only for a fixture store (no git): then `load` publishes the seeded tree/tip instead.
+    @ObservationIgnored private let loader: CommitTreeLoader?
     @ObservationIgnored private let layout: CommitGraphLayout
+    /// Pre-laid-out tree + tip for a fixture store; nil for a real (loader-backed) store.
+    @ObservationIgnored private let fixtureTree: ConstellationTree?
+    @ObservationIgnored private let fixtureTip: String?
     @ObservationIgnored private var loadTask: Task<Void, Never>?
 
     public init(loader: CommitTreeLoader, layout: CommitGraphLayout = CommitGraphLayout()) {
         self.loader = loader
         self.layout = layout
+        self.fixtureTree = nil
+        self.fixtureTip = nil
+    }
+
+    /// Fixture seam (slice 7(b)): a store pre-seeded with an already-laid-out tree + branch tip and
+    /// no loader, so it renders a fixed branch level (previews / ZoomSpike / `-uiTestFixtures`)
+    /// without a `git log`. It still publishes the tip *asynchronously* on `load` — exactly as the
+    /// real store does — so the shell's `.onChange(tip)` fires `.branchTipResolved` and HEAD/selected
+    /// land on the tip.
+    public init(fixtureTree: ConstellationTree, fixtureTip: String) {
+        self.loader = nil
+        self.layout = CommitGraphLayout()
+        self.fixtureTree = fixtureTree
+        self.fixtureTip = fixtureTip
     }
 
     deinit { loadTask?.cancel() }
@@ -45,10 +63,18 @@ public final class CommitTreeStore {
         loadTask?.cancel()
         tree = nil
         tip = nil
+        guard let loader else {                       // fixture store: emit the seeded level, no git
+            loadTask = Task { [weak self] in
+                guard let self, !Task.isCancelled else { return }   // a newer dive supersedes this one
+                self.tree = self.fixtureTree
+                self.tip = self.fixtureTip
+            }
+            return
+        }
         loadTask = Task { [weak self] in
             guard let self else { return }
             do {
-                let commits = try await self.loader.load(repoPath: repoPath, branch: branch)
+                let commits = try await loader.load(repoPath: repoPath, branch: branch)
                 if Task.isCancelled { return }
                 self.publish(commits, branch: branch)
             } catch {

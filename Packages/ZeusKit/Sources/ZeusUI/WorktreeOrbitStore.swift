@@ -25,7 +25,8 @@ public final class WorktreeOrbitStore {
     /// shows just the central star, never the previous repo's stale satellites).
     public private(set) var orbits: ConstellationOrbits?
 
-    @ObservationIgnored private let loader: WorktreeOrbitLoader
+    /// nil only for a fixture store (no git): then `load` is a no-op so the seeded orbits stand.
+    @ObservationIgnored private let loader: WorktreeOrbitLoader?
     @ObservationIgnored private let layout: ConstellationLayout
     @ObservationIgnored private let ringPlanner: OrbitRingPlanner
     @ObservationIgnored private let center: StagePoint
@@ -41,6 +42,17 @@ public final class WorktreeOrbitStore {
         self.center = center
     }
 
+    /// Fixture seam (slice 7(b)): a store pre-seeded with already-laid-out orbits and no loader, so
+    /// it renders a fixed worktree level (previews / ZoomSpike / `-uiTestFixtures`) and ignores the
+    /// shell's navigation-driven loads — no `git worktree list`, no status reads.
+    public init(fixtureOrbits: ConstellationOrbits) {
+        self.loader = nil
+        self.layout = ConstellationLayout()
+        self.ringPlanner = OrbitRingPlanner()
+        self.center = WorktreeOrbitStore.defaultCenter
+        self.orbits = fixtureOrbits
+    }
+
     deinit { loadTask?.cancel() }
 
     /// Loads the worktrees for the repo at `repoPath` and publishes the laid-out orbits. Clears the
@@ -48,13 +60,14 @@ public final class WorktreeOrbitStore {
     /// dive and a slower earlier load can't clobber it. A failed repository read publishes just the
     /// central star (no satellites) rather than leaving another repo's orbits on screen.
     public func load(repoPath: URL) {
+        guard let loader else { return }   // fixture store: keep the seeded orbits
         loadTask?.cancel()
         orbits = nil
         let name = repoPath.lastPathComponent
         loadTask = Task { [weak self] in
             guard let self else { return }
             do {
-                let worktrees = try await self.loader.load(repoPath: repoPath)
+                let worktrees = try await loader.load(repoPath: repoPath)
                 if Task.isCancelled { return }
                 self.publish(name: name, worktrees: worktrees)
             } catch {

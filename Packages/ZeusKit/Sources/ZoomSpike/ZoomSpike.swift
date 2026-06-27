@@ -31,8 +31,9 @@ struct ZoomSpike {
 
         let cwd = FileManager.default.homeDirectoryForCurrentUser
         // Inject a real PTY into the bottom panel so the harness doubles as a near-complete
-        // preview of the app before item E wires the package into the Xcode target.
-        let root = ConstellationShell(theme: .dark) {
+        // preview of the app before item E wires the package into the Xcode target. Sample-backed
+        // stores feed the constellation (no scan / git) so the harness is purely about zoom feel.
+        let root = ConstellationShell<TerminalEmulatorView>.sample(theme: .dark) {
             TerminalEmulatorView(workingDirectory: cwd)
         }
         .frame(minWidth: 1200, minHeight: 800)

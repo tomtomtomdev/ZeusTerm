@@ -25,7 +25,8 @@ public final class HubDataStore {
     /// user to grant access; the scan itself still works, only live updates are affected.
     public private(set) var liveRefreshNeedsFullDiskAccess = false
 
-    @ObservationIgnored private let loader: HubDataLoader
+    /// nil only for a fixture store (no scan/git): then `load` is a no-op so the seeded hub stands.
+    @ObservationIgnored private let loader: HubDataLoader?
     @ObservationIgnored private let layout: ConstellationLayout
     @ObservationIgnored private var roots: [URL]
     @ObservationIgnored private let watcher: (any FileSystemWatching)?
@@ -61,6 +62,22 @@ public final class HubDataStore {
         self.home = home
     }
 
+    /// Fixture seam (slice 7(b)): a store pre-seeded with an already-laid-out hub and no loader, so
+    /// it paints a fixed Hub (previews / ZoomSpike / `-uiTestFixtures`) without a disk scan, git
+    /// reads, FSEvents, or a Full Disk Access probe. `load()` is a no-op, so the seeded hub stands.
+    public init(fixtureHub: ConstellationHub) {
+        self.loader = nil
+        self.roots = []
+        self.layout = ConstellationLayout()
+        self.watcher = nil
+        self.relevance = ChangeRelevance()
+        self.clock = ContinuousClock()
+        self.debounce = .milliseconds(300)
+        self.fullDiskAccess = nil
+        self.home = FileManager.default.homeDirectoryForCurrentUser
+        self.hub = fixtureHub
+    }
+
     deinit {
         watchTask?.cancel()
         refreshTask?.cancel()
@@ -72,6 +89,7 @@ public final class HubDataStore {
     /// empty hub — just the central star — so the scanning indicator clears instead of spinning.
     /// Finally arms the live-refresh watcher on the same roots.
     public func load() async {
+        guard let loader else { return }   // fixture store: keep the seeded hub, no scan
         if let cached = await loader.cachedHub() {
             publish(cached)
         }
@@ -171,6 +189,7 @@ public final class HubDataStore {
     /// tree re-reads its status (P3-D.3 finding #2); they're cleared up front so a change arriving
     /// mid-rescan accumulates afresh and arms the next debounce rather than being lost.
     private func refresh() async {
+        guard let loader else { return }   // fixture store: nothing to reconcile
         let changed = pendingChangedPaths
         pendingChangedPaths = []
         do { publish(try await loader.rescan(roots: roots, changedPaths: changed)) }

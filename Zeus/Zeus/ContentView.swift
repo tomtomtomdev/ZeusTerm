@@ -36,7 +36,7 @@ struct ContentView: View {
 }
 
 #Preview {
-    // Placeholder terminal keeps the preview lightweight (no live PTY, no real scan).
-    ConstellationShell(theme: .dark)
+    // Sample-backed, placeholder terminal — keeps the preview lightweight (no live PTY, no scan).
+    ConstellationShell.sample(theme: .dark)
         .frame(width: 1040, height: 720)
 }
