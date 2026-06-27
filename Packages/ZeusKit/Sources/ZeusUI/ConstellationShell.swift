@@ -18,6 +18,9 @@ public struct ConstellationShell<TerminalContent: View>: View {
     /// nil in previews (the branch-tree level falls back to `SampleConstellationData`); the app
     /// injects a real one so diving into a worktree shows that branch's real commit history.
     @State private var treeData: CommitTreeStore?
+    /// nil in previews (the Changes panel falls back to `SampleConstellationData`); the app injects a
+    /// real one so selecting a commit shows that commit's real changed files + unified diff.
+    @State private var diffData: CommitDiffStore?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     private let terminalContent: TerminalContent
@@ -27,12 +30,14 @@ public struct ConstellationShell<TerminalContent: View>: View {
                 hubData: HubDataStore? = nil,
                 orbitData: WorktreeOrbitStore? = nil,
                 treeData: CommitTreeStore? = nil,
+                diffData: CommitDiffStore? = nil,
                 @ViewBuilder terminalContent: () -> TerminalContent) {
         _store = State(initialValue: store)
         _theme = State(initialValue: theme)
         _hubData = State(initialValue: hubData)
         _orbitData = State(initialValue: orbitData)
         _treeData = State(initialValue: treeData)
+        _diffData = State(initialValue: diffData)
         self.terminalContent = terminalContent()
     }
 
@@ -82,6 +87,13 @@ public struct ConstellationShell<TerminalContent: View>: View {
         .onChange(of: treeData?.tip) { _, tip in
             if let tip { store.dispatch(.branchTipResolved(tip)) }
         }
+        // Selecting a commit on the tree level (incl. the tip landing via .branchTipResolved) loads
+        // that commit's real changed files + diff so the Changes panel reflects the selection.
+        .onChange(of: store.state.selected) { _, sha in
+            guard store.state.view == .tree, !sha.isEmpty,
+                  let path = store.state.projectPath else { return }
+            diffData?.load(repoPath: URL(fileURLWithPath: path), sha: sha)
+        }
     }
 
     /// Hub source: the live scan once loaded, an empty hub while scanning, and the sample
@@ -110,6 +122,16 @@ public struct ConstellationShell<TerminalContent: View>: View {
             return treeData.tree ?? ConstellationTree(nodes: [], edges: [])
         }
         return SampleConstellationData.tree
+    }
+
+    /// Changes-panel source: the selected commit's real diff once loaded, an empty diff for the
+    /// selected sha while loading (panel shows "No changes."), and the sample fixture when no real
+    /// store is injected (previews).
+    private var displayDiff: CommitDiff {
+        if let diffData {
+            return diffData.diff ?? CommitDiff(sha: store.state.selected, files: [], patch: "")
+        }
+        return SampleConstellationData.diff(forSHA: store.state.selected)
     }
 
     // MARK: Canvas (zoom stage + floating Back pill)
@@ -173,11 +195,11 @@ public struct ConstellationShell<TerminalContent: View>: View {
             ZStack { theme.panel; terminalContent }
                 .frame(height: 196)
         case .changes:
-            // Commit header comes from the displayed tree (real once loaded); the diff is still the
-            // sample (empty for real shas) until the real `diff(forCommit:)` lands in slice 6.
+            // Commit header comes from the displayed tree; the diff comes from the live
+            // `CommitDiffStore` once injected (sample fixture only in previews / ZoomSpike).
             let selected = displayTree.nodes.first { $0.id == store.state.selected }
             ChangesPanelView(commit: selected,
-                             diff: SampleConstellationData.diff(forSHA: store.state.selected),
+                             diff: displayDiff,
                              isHead: presenter.selectedIsHead,
                              theme: theme,
                              onCheckout: { store.dispatch(.checkout($0)) })

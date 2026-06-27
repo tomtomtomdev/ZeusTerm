@@ -19,10 +19,12 @@ struct ContentView: View {
     let hubData: HubDataStore
     let orbitData: WorktreeOrbitStore
     let treeData: CommitTreeStore
+    let diffData: CommitDiffStore
     let settings: SettingsStore
 
     var body: some View {
-        ConstellationShell(theme: .dark, hubData: hubData, orbitData: orbitData, treeData: treeData) {
+        ConstellationShell(theme: .dark, hubData: hubData, orbitData: orbitData,
+                           treeData: treeData, diffData: diffData) {
             TerminalEmulatorView(workingDirectory: FileManager.default.homeDirectoryForCurrentUser)
         }
         .frame(minWidth: 1100, minHeight: 720)

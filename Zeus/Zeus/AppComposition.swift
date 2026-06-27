@@ -64,6 +64,14 @@ enum AppComposition {
         CommitTreeStore(loader: CommitTreeLoader(git: GitCLIService()))
     }
 
+    /// The Changes-panel data store: loads a selected commit's changed files + unified diff through
+    /// the same `git` CLI adapter. Stateless beyond the loader; loads on demand when the user selects
+    /// a commit on the branch-tree level.
+    @MainActor
+    static func makeDiffStore() -> CommitDiffStore {
+        CommitDiffStore(loader: CommitDiffLoader(git: GitCLIService()))
+    }
+
     /// The roots the scanner should walk: the user's configured roots when set, else the built-in
     /// dev roots — resolved in one place so the initial scan and every re-scan agree.
     @MainActor
