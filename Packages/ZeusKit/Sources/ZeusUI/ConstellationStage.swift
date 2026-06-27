@@ -138,6 +138,7 @@ struct HubLevelView: View {
                     .position(x: star.point.x, y: star.point.y)
                     .onTapGesture { if !star.isHub { onSelectRepo(star) } }
                     .accessibilityLabel(starLabel(star))
+                    .accessibilityIdentifier(star.isHub ? "hubStar.hub" : "hubStar.\(star.name)")
                     .accessibilityAddTraits(star.isHub ? [] : .isButton)
 
                 // Each repo star wears its project name (the cluster-type label names the group,
@@ -203,6 +204,7 @@ struct OrbitLevelView: View {
                     .position(x: sat.point.x, y: sat.point.y)
                     .onTapGesture { onSelectWorktree(sat) }
                     .accessibilityLabel(satelliteLabel(sat))
+                    .accessibilityIdentifier("worktree.\(sat.branch)")
                     .accessibilityAddTraits(.isButton)
 
                 Text(sat.branch)
@@ -290,6 +292,7 @@ struct TreeLevelView: View {
                     .onTapGesture(count: 2) { onCheckout(node.id) }
                     .onTapGesture { onSelect(node.id) }
                     .accessibilityLabel(commitLabel(node, isHead: isHead))
+                    .accessibilityIdentifier("commit.\(node.id)")
                     .accessibilityAddTraits(.isButton)
 
                 // The commit message reads better than a raw sha at a glance; the full sha still

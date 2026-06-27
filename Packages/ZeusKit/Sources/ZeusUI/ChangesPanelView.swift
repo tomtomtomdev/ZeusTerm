@@ -40,6 +40,7 @@ struct ChangesPanelView: View {
                 .frame(width: 8, height: 8)
             Text(commit?.id ?? "—")
                 .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                .accessibilityIdentifier("changes.commitSHA")
             Text(commit?.summary ?? "No commit selected")
                 .font(.system(size: 12))
                 .foregroundStyle(theme.textMid)
@@ -80,6 +81,7 @@ struct ChangesPanelView: View {
                 .font(.system(size: 10, weight: .semibold)).tracking(1)
                 .foregroundStyle(theme.textDim)
                 .padding(.horizontal, 14).padding(.vertical, 8)
+                .accessibilityIdentifier("changes.fileCount")
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
                     ForEach(diff.files) { file in fileRow(file) }
@@ -98,6 +100,7 @@ struct ChangesPanelView: View {
             Text(file.path)
                 .font(.system(size: 11, design: .monospaced))
                 .lineLimit(1).truncationMode(.middle)
+                .accessibilityIdentifier("changes.file.\(file.path)")
             Spacer(minLength: 6)
             Text("+\(file.additions)").font(.system(size: 10, design: .monospaced))
                 .foregroundStyle(theme.statusColor(.clean))
@@ -115,6 +118,7 @@ struct ChangesPanelView: View {
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(theme.textMid)
                 .textSelection(.enabled)
+                .accessibilityIdentifier("changes.diff")
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(12)
         }

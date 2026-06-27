@@ -14,6 +14,13 @@ import ZeusUI
 
 @main
 struct ZeusApp: App {
+    /// UI-test hook: when launched with `-uiTestFixtures`, render the deterministic, sample-backed
+    /// constellation (no real scan / git / Full Disk Access, placeholder terminal) so XCUITests can
+    /// drive the Hub → Worktree → Branch-tree flow reliably by accessibility identifier (see
+    /// ZeusUITests). The real-git path stays unit-tested at the store/loader level; this only
+    /// stabilizes the *UI* flow against host-dependent data.
+    private let uiTestFixtures = ProcessInfo.processInfo.arguments.contains("-uiTestFixtures")
+
     @State private var settings: SettingsStore
     @State private var hubData: HubDataStore
     @State private var orbitData: WorktreeOrbitStore
@@ -31,8 +38,13 @@ struct ZeusApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView(hubData: hubData, orbitData: orbitData, treeData: treeData,
-                        diffData: diffData, settings: settings)
+            if uiTestFixtures {
+                ConstellationShell(theme: .dark)
+                    .frame(minWidth: 1100, minHeight: 720)
+            } else {
+                ContentView(hubData: hubData, orbitData: orbitData, treeData: treeData,
+                            diffData: diffData, settings: settings)
+            }
         }
         .defaultSize(width: 1320, height: 860)
 

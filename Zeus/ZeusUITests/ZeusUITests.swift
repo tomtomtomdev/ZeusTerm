@@ -2,40 +2,59 @@
 //  ZeusUITests.swift
 //  ZeusUITests
 //
-//  Created by tomtomtom on 6/19/26.
+//  End-to-end UI coverage for the constellation flow. Runs against the deterministic
+//  `-uiTestFixtures` build (sample data, placeholder terminal — see ZeusApp), driving the real
+//  Hub → Worktree → Branch-tree path by accessibility identifier. This proves the slice-6
+//  behavior — *selecting a commit shows that commit's diff* — through the actual UI, which unit
+//  tests can't reach. The real-git data path stays unit-tested at the store/loader level.
 //
 
 import XCTest
 
 final class ZeusUITests: XCTestCase {
 
+    private var app: XCUIApplication!
+
     override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-
-        // In UI tests it is usually best to stop immediately when a failure occurs.
         continueAfterFailure = false
-
-        // In UI tests it’s important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
+        app = XCUIApplication()
+        app.launchArguments += ["-uiTestFixtures"]
+        app.launch()
     }
 
     override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
+        app = nil
     }
 
+    /// Hub → dive a repo → dive a worktree → the branch tree. Selecting a different commit must
+    /// swap the Changes panel to that commit's diff (the changed-files list updates). The tappable
+    /// constellation nodes carry the `.isButton` trait, so they surface to XCUITest as buttons.
     @MainActor
-    func testExample() throws {
-        // UI tests must launch the application that they test.
-        let app = XCUIApplication()
-        app.launch()
+    func testSelectingACommitUpdatesTheChangesPanel() throws {
+        // Hub: dive into a repo star.
+        let star = app.buttons["hubStar.tuntun-api"]
+        XCTAssertTrue(star.waitForExistence(timeout: 15), "Hub star should appear")
+        star.tap()
 
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-    }
+        // Worktree orbit: dive into a worktree satellite.
+        let worktree = app.buttons["worktree.hotfix/payment-retry"]
+        XCTAssertTrue(worktree.waitForExistence(timeout: 10), "Worktree satellite should appear")
+        worktree.tap()
 
-    @MainActor
-    func testLaunchPerformance() throws {
-        // This measures how long it takes to launch your application.
-        measure(metrics: [XCTApplicationLaunchMetric()]) {
-            XCUIApplication().launch()
-        }
+        // Branch tree: HEAD/selected lands on the tip (12ab9c) → its diff shows by default.
+        let tipFile = app.staticTexts["changes.file.Sources/Session/SessionStore.swift"]
+        XCTAssertTrue(tipFile.waitForExistence(timeout: 10),
+                      "Tip commit's changed files should populate the panel")
+
+        // Select a different commit → the panel swaps to THAT commit's diff.
+        let otherCommit = app.buttons["commit.aa55fe"]
+        XCTAssertTrue(otherCommit.waitForExistence(timeout: 10), "Commit aa55fe should be on the tree")
+        otherCommit.tap()
+
+        let newFile = app.staticTexts["changes.file.Sources/Auth/OAuthFlow.swift"]
+        XCTAssertTrue(newFile.waitForExistence(timeout: 10),
+                      "Selecting aa55fe should show its changed files")
+        XCTAssertFalse(tipFile.exists,
+                       "The previously-selected commit's files should no longer be shown")
     }
 }
