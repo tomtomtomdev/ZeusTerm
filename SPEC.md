@@ -137,7 +137,7 @@ Each spike is a tiny throwaway prototype with a pass/fail acceptance test. Run t
 | # | Spike | Question | Acceptance criteria |
 |---|-------|----------|---------------------|
 | S1 | Terminal embed | Does SwiftTerm give us a real, resizable PTY in SwiftUI with copy/paste + 256color? | Run `vim`, `htop`, `claude`; resize reflows; truecolor renders. |
-| S2 | Right-arrow accept | Can we render ghost text + accept on `→` and inject to PTY cleanly? | Type partial cmd, `→` completes, `Enter` runs it. |
+| S2 | Right-arrow accept | Can we render ghost text + accept on `→` and inject to PTY cleanly? | ✅ **Resolved — GO (2026-06-28, see outcomes).** App-managed line: `moveRight:` interception (live-caret EOL gate) + `LocalProcessTerminalView.send(txt:)`; `--selftest` proves accept→inject→executed. |
 | S3 | Worktree truth | libgit2 worktree API vs `git worktree list --porcelain` — which is reliable? | All linked worktrees + branches enumerated for a multi-worktree repo. |
 | S4 | Spotlight for `.git` | Does `NSMetadataQuery` surface `.git` dirs, or must we enumerate manually? | ✅ **Resolved — negative (2026-06-21, see §4.1).** Manual enumeration is the source of truth; Spotlight accelerator deferred to v2. |
 | S5 | Scan performance | Time to index a disk with ~500 repos / deep `node_modules`? | < 3 s warm, pruning works, FSEvents keeps live. |
@@ -171,6 +171,7 @@ and the inconclusive-spike default above. Revisit only if v2 needs faster cold s
 | # | Date | Verdict | Notes |
 |---|------|---------|-------|
 | S1 | 2026-06-19 | ✅ **GO — SwiftTerm** | `LocalProcessTerminalView` (SwiftTerm 1.13.0) wrapped in a SwiftUI `NSViewRepresentable` (`ZeusTerminal.TerminalEmulatorView`) gives a real PTY: harness spawns a `-zsh` login shell on `/dev/ttys005` as foreground session leader. Truecolor + 256-color render and `htop`/`vim` reflow on resize (verified in the `S1TerminalSpike` run harness). Shell launch params (`TERM=xterm-256color`, `COLORTERM=truecolor`, login argv0) are pure + unit-tested in `TerminalLaunchConfig`. Host app must stay **non-sandboxed** (§8). |
+| S2 | 2026-06-28 | ✅ **GO — app-managed line** | The §2.4 *headline* approach is viable. Harness `S2SuggestionSpike` (`swift run S2SuggestionSpike`): a borderless `NSTextField` (the app-managed line) with a SwiftUI ghost-text layer behind it, above a live PTY. **Two clean primitives confirmed:** (1) **`→`-accept-at-EOL** = intercept the `moveRight:` selector in `NSControlTextEditingDelegate.control(_:textView:doCommandBy:)`, gate on the field editor's **live** caret (`selectedRange.location == length`), accept only there (else return `false` so `→` is an ordinary cursor move) — this is the SPEC §12 #5 guardrail, and gating on the *live* caret (not the store's last-published caret) is essential because arrow/mouse caret moves don't fire `controlTextDidChange`. (2) **Clean PTY injection** = `LocalProcessTerminalView.send(txt: cmd + "\r")` writes the committed line straight to the child shell. **Headless `--selftest` PASSES autonomously**, proving engine→ghost→`SuggestionStore.accept()`→`send(txt:)`→**executed** end-to-end against a real store + real PTY (asserts the shell evaluated `echo S2_OK_$((6*7))` → `S2_OK_42` in the buffer, distinguishing *ran* from merely *echoed*). The accept/EOL/ghost logic is already unit-tested (`SuggestionLineTests`, `SuggestionStoreTests`); the literal `→` keypress is the /verify-by-human step (GUI keystroke automation is unreliable on the dev machine — the harness window opens on a separate Space). **Ghost rendering note:** overlay (clear typed text reserves width + dimmed ghost) in a monospaced font aligns acceptably with a small leading inset; a production line may instead draw the ghost in a custom cell for pixel-perfect alignment. **Caret units:** convert the field editor's UTF-16 `selectedRange.location` to a `Character` count to match `SuggestionLine.caret`. |
 
 ---
 
@@ -399,7 +400,7 @@ scale step between levels reads as constant.
 2. **libghostty API instability** → SwiftTerm for v1; libghostty is opt-in v2 (S7).
 3. **Full Disk Access friction** → offer scoped-folder mode; explain why on first run (S8).
 4. **Animated gradient vs terminal perf** → throttle/freeze gradient under load; Reduce Motion (S6).
-5. **Right-arrow semantics** → must not hijack `→` for cursor movement mid-line; only accept at EOL (S2).
+5. **Right-arrow semantics** → must not hijack `→` for cursor movement mid-line; only accept at EOL (S2). ✅ **Resolved (S2, 2026-06-28):** intercept `moveRight:` and gate on the field editor's *live* caret-at-EOL; otherwise return `false` so `→` moves the cursor normally.
 6. **Huge histories / monorepos** → paginate commits, cap revwalk, lazy worktree loading.
 7. **Scope creep** → ship vertical slices (one project → tree → terminal) before breadth.
 

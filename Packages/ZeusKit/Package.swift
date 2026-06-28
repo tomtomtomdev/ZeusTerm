@@ -27,6 +27,10 @@ let package = Package(
         // powers-of-ten zoom can be felt/tuned by eye. `swift run ZoomSpike`. (Distinct from
         // SPEC §4's "S2 = right-arrow accept" spike; this one is about the §7 zoom motion.)
         .executable(name: "ZoomSpike", targets: ["ZoomSpike"]),
+        // S2 spike harness (SPEC §4) — proves the app-managed suggestion line: ghost text +
+        // `→`-accept-at-EOL + clean PTY injection. `swift run S2SuggestionSpike` (interactive)
+        // or `swift run S2SuggestionSpike --selftest` (headless accept→inject→ran check).
+        .executable(name: "S2SuggestionSpike", targets: ["S2SuggestionSpike"]),
     ],
     dependencies: [
         .package(url: "https://github.com/migueldeicaza/SwiftTerm", from: "1.13.0"),
@@ -64,6 +68,18 @@ let package = Package(
         .executableTarget(
             name: "ZoomSpike",
             dependencies: ["ZeusUI", "ZeusTerminal"]
+        ),
+        .executableTarget(
+            name: "S2SuggestionSpike",
+            dependencies: [
+                "ZeusUI",        // SuggestionStore
+                "ZeusSuggest",   // SuggestionEngine
+                "ZeusTerminal",  // TerminalLaunchConfig (reuse the tested env resolution)
+                // SwiftTerm directly: the spike needs send(txt:) + buffer read, which the
+                // production TerminalEmulatorView deliberately doesn't expose yet (that's a
+                // TDD'd P6 wiring slice, not throwaway-spike surface).
+                .product(name: "SwiftTerm", package: "SwiftTerm"),
+            ]
         ),
         .testTarget(name: "ZeusDomainTests", dependencies: ["ZeusDomain"]),
         .testTarget(name: "ZeusGitTests", dependencies: ["ZeusGit"]),
