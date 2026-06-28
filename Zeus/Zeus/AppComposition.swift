@@ -75,12 +75,14 @@ enum AppComposition {
     }
 
     /// The autosuggestion store backing the app-managed command line (feature #4, P6). Seeds the
-    /// engine with empty history for now — git-subcommand knowledge + cwd path completion still work;
-    /// a real shell-history reader (frecency) is a follow-up. Depends only on the `SuggestionProviding`
+    /// frecency engine with the user's real zsh history (best-effort, read-only; degrades to empty
+    /// if the file can't be read) so suggestions reflect what they actually run. Git-subcommand
+    /// knowledge + cwd path completion layer on top. Depends only on the `SuggestionProviding`
     /// engine, which is injected here at the composition root.
     @MainActor
     static func makeSuggestionStore() -> SuggestionStore {
-        SuggestionStore(engine: SuggestionEngine(history: []))
+        let history = ShellHistoryReader().history(at: ShellHistoryReader.defaultHistoryURL())
+        return SuggestionStore(engine: SuggestionEngine(history: history))
     }
 
     /// The live terminal session the command line writes committed commands to (feature #6 / P6).
