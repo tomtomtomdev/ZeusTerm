@@ -123,6 +123,53 @@ struct SuggestionStoreTests {
         #expect(store.line == SuggestionLine(input: "git pu", suggestion: "git push", caret: 3))
     }
 
+    @Test func submitReturnsTheTypedLineAndResetsToEmpty() async {
+        let store = SuggestionStore(engine: StubEngine(["git push"]))
+        store.update(input: "git pu", caret: 6, cwd: cwd)
+        await store.waitForLoad()
+
+        let submitted = store.submit()                           // user pressed Enter
+
+        #expect(submitted == "git pu")                           // runs what was typed, not the unaccepted ghost
+        #expect(store.line == SuggestionLine(input: "", suggestion: nil, caret: 0))
+    }
+
+    @Test func submitOnAnEmptyLineReturnsNilAndChangesNothing() {
+        let store = SuggestionStore(engine: StubEngine(["git push"]))
+
+        let submitted = store.submit()                           // bare Enter at an empty prompt
+
+        #expect(submitted == nil)                                // nothing to send to the PTY
+        #expect(store.line == SuggestionLine(input: "", suggestion: nil, caret: 0))
+    }
+
+    @Test func submitAfterAcceptReturnsTheCompletedCommand() async {
+        let store = SuggestionStore(engine: StubEngine(["git push"]))
+        store.update(input: "git pu", caret: 6, cwd: cwd)
+        await store.waitForLoad()
+        _ = store.accept()                                       // `→` completed the line to "git push"
+
+        let submitted = store.submit()                           // Enter runs the accepted command
+
+        #expect(submitted == "git push")
+        #expect(store.line == SuggestionLine(input: "", suggestion: nil, caret: 0))
+    }
+
+    @Test func submitCancelsAnInFlightQueryAndStaysCleared() async {
+        let engine = GatedEngine(["git pu": ["git pull"]])
+        let store = SuggestionStore(engine: engine)
+        store.update(input: "git pu", caret: 6, cwd: cwd)        // query gated, still in flight
+
+        let submitted = store.submit()                           // Enter before the suggestion resolves
+
+        #expect(submitted == "git pu")
+        #expect(store.line == SuggestionLine(input: "", suggestion: nil, caret: 0))
+
+        await engine.release("git pu")                           // the stale query resolves late...
+        await store.waitForLoad()
+        #expect(store.line == SuggestionLine(input: "", suggestion: nil, caret: 0))  // ...and can't repopulate
+    }
+
     @Test func aStaleEarlierQueryCannotClobberANewerKeystroke() async {
         let engine = GatedEngine(["git pu": ["git pull"], "git pus": ["git push"]])
         let store = SuggestionStore(engine: engine)

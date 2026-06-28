@@ -57,6 +57,19 @@ public final class SuggestionStore {
         return command
     }
 
+    /// `Enter` was pressed: commit the typed line for the caller to write to the PTY, then reset to
+    /// empty. Returns what was *typed* (an unaccepted ghost is only a suggestion — Enter runs the
+    /// typed text, not the ghost). Returns nil on an empty line so a bare Enter sends nothing. Cancels
+    /// any in-flight query so a late result can't repopulate the cleared line.
+    @discardableResult
+    public func submit() -> String? {
+        guard !line.input.isEmpty else { return nil }
+        let command = line.input
+        loadTask?.cancel()
+        line = SuggestionLine(input: "", suggestion: nil, caret: 0)
+        return command
+    }
+
     /// Test seam: await the in-flight query (no-op if none), mirroring `CommitDiffStore.waitForLoad()`.
     public func waitForLoad() async { await loadTask?.value }
 }

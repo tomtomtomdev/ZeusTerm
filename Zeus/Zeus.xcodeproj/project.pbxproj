@@ -14,6 +14,7 @@
 		2BDDFD1E2FE66775001BF04B /* ZeusDomain in Frameworks */ = {isa = PBXBuildFile; productRef = 2BDDFD1D2FE66775001BF04B /* ZeusDomain */; };
 		2BDDFD202FE66775001BF04B /* ZeusIndex in Frameworks */ = {isa = PBXBuildFile; productRef = 2BDDFD1F2FE66775001BF04B /* ZeusIndex */; };
 		2BDDFD222FE66775001BF04B /* ZeusSettingsStore in Frameworks */ = {isa = PBXBuildFile; productRef = 2BDDFD212FE66775001BF04B /* ZeusSettingsStore */; };
+		2BDDFD242FE66775001BF04B /* ZeusSuggest in Frameworks */ = {isa = PBXBuildFile; productRef = 2BDDFD232FE66775001BF04B /* ZeusSuggest */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -69,6 +70,7 @@
 				2BDDFD1E2FE66775001BF04B /* ZeusDomain in Frameworks */,
 				2BDDFD202FE66775001BF04B /* ZeusIndex in Frameworks */,
 				2BDDFD222FE66775001BF04B /* ZeusSettingsStore in Frameworks */,
+				2BDDFD242FE66775001BF04B /* ZeusSuggest in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -136,6 +138,7 @@
 				2BDDFD1D2FE66775001BF04B /* ZeusDomain */,
 				2BDDFD1F2FE66775001BF04B /* ZeusIndex */,
 				2BDDFD212FE66775001BF04B /* ZeusSettingsStore */,
+				2BDDFD232FE66775001BF04B /* ZeusSuggest */,
 			);
 			productName = Zeus;
 			productReference = 2B02F1012FE58A6800D07FB4 /* Zeus.app */;
@@ -630,6 +633,10 @@
 		2BDDFD212FE66775001BF04B /* ZeusSettingsStore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ZeusSettingsStore;
+		};
+		2BDDFD232FE66775001BF04B /* ZeusSuggest */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ZeusSuggest;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
