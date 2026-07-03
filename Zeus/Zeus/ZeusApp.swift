@@ -49,7 +49,12 @@ struct ZeusApp: App {
         .defaultSize(width: 1320, height: 860)
 
         Settings {
-            RootsSettingsView(store: settings)
+            TabView {
+                RootsSettingsView(store: settings)
+                    .tabItem { Label("Folders", systemImage: "folder") }
+                AppearanceSettingsView(store: settings)
+                    .tabItem { Label("Appearance", systemImage: "paintpalette") }
+            }
         }
     }
 }
