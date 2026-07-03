@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- v1 is Developer ID + notarized, NON-sandboxed (SPEC §8): scanning the whole disk and
+	     shelling out to git are the core features. Full Disk Access is a TCC grant at first run,
+	     not an entitlement. -->
+	<key>com.apple.security.app-sandbox</key>
+	<false/>
+
+	<!-- Hardened Runtime is required for notarization (ENABLE_HARDENED_RUNTIME=YES). No runtime
+	     exceptions are declared: Zeus spawns the system /bin/zsh (PTY) and /usr/bin/git as child
+	     processes — allowed under Hardened Runtime without entitlements — and links SwiftTerm/GRDB
+	     statically into the signed app, so library validation stays on. If a future build bundles an
+	     unsigned/third-party helper, add com.apple.security.cs.disable-library-validation here. -->
+</dict>
+</plist>
