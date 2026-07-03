@@ -80,8 +80,40 @@ public struct GradientConfig: Codable, Sendable, Equatable {
         angleDegrees: 30
     )
 
-    public static let presets: [String: GradientConfig] = [
-        "Aurora": .aurora,
-        "Sunset": .sunset,
+    /// Neutral grayscale — every stop is a pure gray (equal channels), for a distraction-free canvas.
+    public static let mono = GradientConfig(
+        style: .linear,
+        colorsHex: ["#0A0A0A", "#2E2E2E", "#5A5A5A"],
+        angleDegrees: 90
+    )
+
+    /// Green-on-black terminal aesthetic: black floor rising to bright phosphor green.
+    public static let matrix = GradientConfig(
+        style: .radial,
+        colorsHex: ["#000000", "#003B00", "#00FF41"],
+        angleDegrees: 0
+    )
+
+    /// A named preset in the Settings picker.
+    public struct Preset: Sendable, Equatable {
+        public let name: String
+        public let config: GradientConfig
+        public init(name: String, config: GradientConfig) {
+            self.name = name
+            self.config = config
+        }
+    }
+
+    /// The preset catalog in display order (SPEC §2.7). Ordered (not a dict) so the picker is stable.
+    public static let presets: [Preset] = [
+        Preset(name: "Aurora", config: .aurora),
+        Preset(name: "Sunset", config: .sunset),
+        Preset(name: "Mono",   config: .mono),
+        Preset(name: "Matrix", config: .matrix),
     ]
+
+    /// Resolves a preset by name; nil for an unknown name.
+    public static func preset(named name: String) -> GradientConfig? {
+        presets.first { $0.name == name }?.config
+    }
 }
