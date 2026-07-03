@@ -52,6 +52,15 @@ struct MeshGradientPlanTests {
         #expect(MeshGradientPlan(config: still).isAnimating(reduceMotion: false) == false)
     }
 
+    // P8-D perf: the nebula is a slow ~8s drift, so it's capped well below display refresh — 30fps is
+    // visually identical to 120 but a quarter of the per-frame cos/sin cost, so it can't starve the
+    // terminal (SPEC §6). The cap is expressed as a minimum seconds-per-frame the view feeds to
+    // TimelineView(.animation(minimumInterval:)).
+    @Test func meshAnimationIsCappedToAModestFrameRate() {
+        let plan = MeshGradientPlan(config: .aurora)
+        #expect(plan.frameInterval == 1.0 / 30.0)
+    }
+
     @Test func durationScalesInverselyWithSpeed() {
         let fast = MeshGradientPlan(config: GradientConfig(style: .mesh, colorsHex: ["#000000", "#FFFFFF"], animationSpeed: 2))
         let slow = MeshGradientPlan(config: GradientConfig(style: .mesh, colorsHex: ["#000000", "#FFFFFF"], animationSpeed: 0.5))

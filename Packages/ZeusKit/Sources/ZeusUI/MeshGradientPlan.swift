@@ -51,6 +51,13 @@ struct MeshGradientPlan: Equatable {
 
     private static let baseDuration: Double = 8
 
+    /// Minimum seconds between mesh recomputes — a frame-rate cap fed to `TimelineView`. The nebula's
+    /// drift is slow enough that 30fps is indistinguishable from display refresh while costing a
+    /// quarter of the per-frame trig at 120Hz, so the gradient never starves the terminal (SPEC §6).
+    var frameInterval: Double { 1.0 / Self.targetFPS }
+
+    private static let targetFPS: Double = 30
+
     /// Grid side length for a color count: at least 2 (a mesh needs a 2×2 minimum), at most 3.
     private static func side(forColorCount count: Int) -> Int {
         let ideal = Int(ceil(Double(count).squareRoot()))

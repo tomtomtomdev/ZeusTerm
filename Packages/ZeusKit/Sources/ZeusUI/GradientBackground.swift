@@ -38,10 +38,15 @@ public struct GradientBackground: View {
 private struct MeshNebula: View {
     let plan: MeshGradientPlan
     let reduceMotion: Bool
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        if plan.isAnimating(reduceMotion: reduceMotion) {
-            TimelineView(.animation) { timeline in
+        if animating {
+            // Cap the drift at `plan.frameInterval` (30fps) rather than display refresh — imperceptible
+            // for a slow nebula, a quarter of the per-frame trig at 120Hz, so it can't starve the
+            // terminal (SPEC §6). Paused whenever the window isn't active so a backgrounded Zeus draws
+            // nothing at all.
+            TimelineView(.animation(minimumInterval: plan.frameInterval, paused: scenePhase != .active)) { timeline in
                 let phase = timeline.date.timeIntervalSinceReferenceDate * (2 * .pi / plan.animationDuration)
                 mesh(driftPhase: phase)
             }
@@ -49,6 +54,9 @@ private struct MeshNebula: View {
             mesh(driftPhase: nil)
         }
     }
+
+    /// Animate only when the config/Reduce-Motion allow it.
+    private var animating: Bool { plan.isAnimating(reduceMotion: reduceMotion) }
 
     private func mesh(driftPhase: Double?) -> some View {
         MeshGradient(
