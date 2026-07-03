@@ -50,6 +50,22 @@ public enum StageFocus {
         }?.id
     }
 
+    /// What activating (Return/Space) a focused commit on the branch tree should do.
+    public enum TreeActivation: Sendable, Hashable {
+        case select(String)     // move the selection to this commit
+        case checkout(String)   // check it out (the second-activation / double-click analog)
+        case ignore             // no-op (e.g. re-activating the current HEAD)
+    }
+
+    /// Tree activation policy: a first activation selects the focused commit; activating the
+    /// already-selected commit checks it out — UNLESS it's already HEAD (nothing to check out). This
+    /// keeps the seeded entry state (focused == selected == head) from firing a checkout on the very
+    /// first keypress.
+    public static func treeActivation(focused: String, selected: String, head: String) -> TreeActivation {
+        guard focused == selected else { return .select(focused) }
+        return focused == head ? .ignore : .checkout(focused)
+    }
+
     /// Whether `to` sits in `direction`'s half-plane relative to `from`.
     private static func inDirection(_ direction: FocusDirection, from: StagePoint, to: StagePoint) -> Bool {
         switch direction {

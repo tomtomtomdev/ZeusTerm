@@ -362,8 +362,10 @@ struct TreeLevelView: View {
                     .accessibilityLabel(commitLabel(node, isHead: isHead))
                     .accessibilityIdentifier("commit.\(node.id)")
                     .accessibilityAddTraits(.isButton)
-                    // VoiceOver walks the tree newest→oldest (higher rank = newer = read first).
-                    .accessibilitySortPriority(Double(node.rank))
+                    // VoiceOver walks the tree newest→oldest (higher rank = newer = read first), with
+                    // x as a tie-break so same-depth sibling-branch commits read left→right instead of
+                    // in an undefined order (point.x ∈ 0…1040, scaled small to never cross a rank step).
+                    .accessibilitySortPriority(Double(node.rank) - node.point.x / 100_000)
 
                 // The commit message reads better than a raw sha at a glance; the full sha still
                 // lives in the a11y label and the Changes panel. Capped + tail-truncated so a long

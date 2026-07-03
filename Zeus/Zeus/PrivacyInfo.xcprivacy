@@ -4,7 +4,12 @@
 <dict>
 	<!-- Zeus does no tracking and collects no data — it's a local navigator. The only required-reason
 	     API it touches is file timestamps: the scanner reads modification dates to build/refresh the
-	     project index and surface repo activity to the user. -->
+	     project index and surface repo activity to the user.
+	     NOTE: the standard FileTimestamp reason codes are worded for files inside the app's own
+	     container; Zeus (non-sandboxed, Full Disk Access) reads timestamps across the whole disk, which
+	     no reason code cleanly covers. This is not validated for Developer ID v1 distribution (only App
+	     Store submission validates the manifest); revisit the reason if Zeus is ever submitted to the
+	     App Store. C617.1 (display timestamps to the person) is the closest fit. -->
 	<key>NSPrivacyTracking</key>
 	<false/>
 	<key>NSPrivacyTrackingDomains</key>

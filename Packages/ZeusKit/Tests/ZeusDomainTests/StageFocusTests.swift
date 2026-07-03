@@ -67,4 +67,22 @@ struct StageFocusTests {
     @Test func initialFocusOfAnEmptyMapIsNil() {
         #expect(StageFocus.initialFocus(in: []) == nil)
     }
+
+    // MARK: Tree activation — first Return selects, a second Return on the same (non-HEAD) commit
+    // checks it out (the keyboard analog of single- vs double-click). Crucially the ENTRY state seeds
+    // focused == selected == head, and that must NOT fire a checkout on the very first keypress.
+
+    @Test func activatingAFocusedNonSelectedCommitSelectsIt() {
+        #expect(StageFocus.treeActivation(focused: "c1", selected: "c2", head: "c2") == .select("c1"))
+    }
+
+    @Test func activatingTheAlreadySelectedNonHeadCommitChecksItOut() {
+        #expect(StageFocus.treeActivation(focused: "c1", selected: "c1", head: "c2") == .checkout("c1"))
+    }
+
+    @Test func activatingTheHeadCommitOnEntryDoesNothing() {
+        // focused == selected == head is exactly the seeded entry state — a first Return here must be
+        // a no-op, never a checkout of HEAD.
+        #expect(StageFocus.treeActivation(focused: "c2", selected: "c2", head: "c2") == .ignore)
+    }
 }

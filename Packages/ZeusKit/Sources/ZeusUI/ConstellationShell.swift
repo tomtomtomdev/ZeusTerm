@@ -277,8 +277,9 @@ public struct ConstellationShell<TerminalContent: View>: View {
     }
 
     /// Activate the focused node — the SAME intent a tap dispatches. On the tree, a first Return
-    /// selects and a second Return on the already-selected commit checks it out (the keyboard analog
-    /// of single- vs double-click).
+    /// selects and a second Return on the already-selected (non-HEAD) commit checks it out (the
+    /// keyboard analog of single- vs double-click); the decision is the pure, tested `treeActivation`
+    /// so the seeded entry state (focused == selected == head) never checks out on the first keypress.
     private func activateFocus() {
         guard presenter.keyboardEnabled, let id = focusedID else { return }
         switch store.state.view {
@@ -287,8 +288,11 @@ public struct ConstellationShell<TerminalContent: View>: View {
         case .work:
             if let sat = displayOrbits.satellites.first(where: { $0.id == id }) { diveIntoWorktree(sat) }
         case .tree:
-            if store.state.selected == id { store.dispatch(.checkout(id)) }
-            else { store.dispatch(.selectCommit(id)) }
+            switch StageFocus.treeActivation(focused: id, selected: store.state.selected, head: store.state.head) {
+            case let .select(sha):   store.dispatch(.selectCommit(sha))
+            case let .checkout(sha): store.dispatch(.checkout(sha))
+            case .ignore:            break
+            }
         }
     }
 

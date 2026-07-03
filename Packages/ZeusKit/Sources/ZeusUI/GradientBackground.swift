@@ -44,9 +44,10 @@ private struct MeshNebula: View {
         if animating {
             // Cap the drift at `plan.frameInterval` (30fps) rather than display refresh — imperceptible
             // for a slow nebula, a quarter of the per-frame trig at 120Hz, so it can't starve the
-            // terminal (SPEC §6). Paused whenever the window isn't active so a backgrounded Zeus draws
-            // nothing at all.
-            TimelineView(.animation(minimumInterval: plan.frameInterval, paused: scenePhase != .active)) { timeline in
+            // terminal (SPEC §6). Paused only when the window is truly backgrounded (hidden/minimized),
+            // NOT merely `.inactive` (visible but not frontmost) — otherwise a visible window's nebula
+            // would freeze the moment you click another app.
+            TimelineView(.animation(minimumInterval: plan.frameInterval, paused: scenePhase == .background)) { timeline in
                 let phase = timeline.date.timeIntervalSinceReferenceDate * (2 * .pi / plan.animationDuration)
                 mesh(driftPhase: phase)
             }
