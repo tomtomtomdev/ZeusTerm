@@ -72,7 +72,10 @@ public protocol SuggestionProviding: Sendable {
     func suggestions(for input: String, cwd: URL) async -> [String]
 }
 
-/// Drives a live terminal session (feature #6). Reference type, UI-bound — not Sendable.
+/// Drives a live terminal session (feature #6). Reference type, UI-bound — not Sendable;
+/// main-actor isolated because it fronts an AppKit terminal view and PTY callbacks are
+/// marshaled to main (SPEC §3).
+@MainActor
 public protocol TerminalSessionControlling: AnyObject {
     var workingDirectory: URL { get }
     func send(_ text: String)
