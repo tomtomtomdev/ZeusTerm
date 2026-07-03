@@ -59,6 +59,14 @@ struct ThemeTests {
         }
     }
 
+    // Differentiate Without Color (WCAG 1.4.1): status is color-only on the map, so each status also
+    // maps to a shape-distinct SF Symbol drawn on nodes when the accessibility setting is on.
+    @Test func everyStatusHasADistinctGlyphSymbol() {
+        let symbols = GitStatus.allCases.map(Theme.statusSymbol)
+        #expect(symbols == ["checkmark", "pencil", "arrow.up", "arrow.down", "questionmark"])
+        #expect(Set(symbols).count == GitStatus.allCases.count)   // all distinct
+    }
+
     @Test func branchLanesAreColoredByName() {
         #expect(Theme.laneHex(forBranch: "main") == "#F5C451")        // Zeus gold
         #expect(Theme.laneHex(forBranch: "develop") == "#6E8BFF")

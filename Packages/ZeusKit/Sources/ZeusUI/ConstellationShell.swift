@@ -24,6 +24,9 @@ public struct ConstellationShell<TerminalContent: View>: View {
     @State private var diffData: CommitDiffStore?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
+    /// Color-independent status cues (WCAG 1.4.1) + higher-contrast decoration (SPEC §7 a11y).
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     /// The keyboard-focused node on the current level (SPEC §7: the star map is not mouse-only).
     /// Reset/seeded reactively as the level's node set changes; `nil` before the first node lands.
     @State private var focusedID: String?
@@ -207,11 +210,15 @@ public struct ConstellationShell<TerminalContent: View>: View {
     @ViewBuilder private var stageContent: some View {
         switch store.state.view {
         case .hub:
-            HubLevelView(hub: displayHub, theme: theme, focusedID: focusedID) { star in
+            HubLevelView(hub: displayHub, theme: theme, focusedID: focusedID,
+                         differentiateWithoutColor: differentiateWithoutColor,
+                         increaseContrast: increaseContrast) { star in
                 diveIntoRepo(star)
             }
         case .work:
-            OrbitLevelView(orbits: displayOrbits, theme: theme, focusedID: focusedID) { sat in
+            OrbitLevelView(orbits: displayOrbits, theme: theme, focusedID: focusedID,
+                           differentiateWithoutColor: differentiateWithoutColor,
+                           increaseContrast: increaseContrast) { sat in
                 diveIntoWorktree(sat)
             }
         case .tree:
@@ -220,10 +227,14 @@ public struct ConstellationShell<TerminalContent: View>: View {
                           selected: store.state.selected,
                           theme: theme,
                           focusedID: focusedID,
+                          increaseContrast: increaseContrast,
                           onSelect: { store.dispatch(.selectCommit($0)) },
                           onCheckout: { store.dispatch(.checkout($0)) })
         }
     }
+
+    /// SwiftUI models Increase Contrast as `colorSchemeContrast == .increased`.
+    private var increaseContrast: Bool { colorSchemeContrast == .increased }
 
     // MARK: Node activation (shared by tap and keyboard — same intents, one place)
 

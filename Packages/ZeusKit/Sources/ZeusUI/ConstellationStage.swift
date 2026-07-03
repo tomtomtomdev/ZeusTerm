@@ -16,6 +16,25 @@ struct FocusRing: View {
     }
 }
 
+/// A small shape-distinct status badge shown beside a node under Differentiate Without Color, so git
+/// status is legible without relying on hue (WCAG 1.4.1). Decorative — status is already in the node's
+/// VoiceOver label, so this is `accessibilityHidden`.
+struct StatusGlyphBadge: View {
+    let status: GitStatus
+    let theme: Theme
+
+    var body: some View {
+        Image(systemName: Theme.statusSymbol(status))
+            .font(.system(size: 8, weight: .bold))
+            .foregroundStyle(theme.textHi)
+            .padding(2)
+            .background(theme.appBackground.opacity(0.85), in: Circle())
+            .overlay(Circle().stroke(theme.textHi.opacity(0.5), lineWidth: 0.5))
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+}
+
 /// A glowing star/satellite disc. `ring` draws the white border the hub & repo stars carry;
 /// `focused` adds the dashed keyboard-focus cursor.
 struct StarDisc: View {
@@ -125,6 +144,8 @@ struct HubLevelView: View {
     let hub: ConstellationHub
     let theme: Theme
     var focusedID: String? = nil
+    var differentiateWithoutColor: Bool = false
+    var increaseContrast: Bool = false
     let onSelectRepo: (StarNode) -> Void
 
     var body: some View {
@@ -134,8 +155,9 @@ struct HubLevelView: View {
                     var path = Path()
                     path.move(to: CGPoint(x: edge.from.x, y: edge.from.y))
                     path.addLine(to: CGPoint(x: edge.to.x, y: edge.to.y))
+                    let base = edge.dim ? 0.10 : 0.20
                     ctx.stroke(path,
-                               with: .color(theme.textDim.opacity(edge.dim ? 0.10 : 0.20)),
+                               with: .color(theme.textDim.opacity(increaseContrast ? base * 2 : base)),
                                lineWidth: 1)
                 }
             }
@@ -148,7 +170,7 @@ struct HubLevelView: View {
                     .position(x: label.point.x, y: label.point.y)
             }
 
-            ForEach(hub.stars) { star in
+            ForEach(Array(hub.stars.enumerated()), id: \.element.id) { index, star in
                 StarDisc(color: star.isHub ? theme.gold : theme.statusColor(star.status ?? .clean),
                          diameter: star.size,
                          ring: star.isHub,
@@ -160,6 +182,14 @@ struct HubLevelView: View {
                     .accessibilityLabel(starLabel(star))
                     .accessibilityIdentifier(star.isHub ? "hubStar.hub" : "hubStar.\(star.name)")
                     .accessibilityAddTraits(star.isHub ? [] : .isButton)
+                    // Stable VoiceOver order (hub first, then cluster members in layout order).
+                    .accessibilitySortPriority(Double(hub.stars.count - index))
+
+                // Differentiate Without Color: a shape badge top-right of each status-colored star.
+                if differentiateWithoutColor, !star.isHub, let status = star.status {
+                    StatusGlyphBadge(status: status, theme: theme)
+                        .position(x: star.point.x + 9, y: star.point.y - 9)
+                }
 
                 // Each repo star wears its project name (the cluster-type label names the group,
                 // not the project). The hub stays unlabeled here — it's visually distinct already.
@@ -190,6 +220,8 @@ struct OrbitLevelView: View {
     let orbits: ConstellationOrbits
     let theme: Theme
     var focusedID: String? = nil
+    var differentiateWithoutColor: Bool = false
+    var increaseContrast: Bool = false
     let onSelectWorktree: (SatelliteNode) -> Void
 
     var body: some View {
@@ -199,7 +231,7 @@ struct OrbitLevelView: View {
                     let rect = CGRect(x: ring.center.x - ring.rx, y: ring.center.y - ring.ry,
                                       width: ring.rx * 2, height: ring.ry * 2)
                     ctx.stroke(Path(ellipseIn: rect),
-                               with: .color(theme.textDim.opacity(0.30)),
+                               with: .color(theme.textDim.opacity(increaseContrast ? 0.5 : 0.30)),
                                style: StrokeStyle(lineWidth: 1, dash: [4, 5]))
                 }
             }
@@ -208,6 +240,11 @@ struct OrbitLevelView: View {
                 .shadow(color: centerColor.opacity(0.6), radius: 22)
                 .position(x: orbits.center.point.x, y: orbits.center.point.y)
                 .accessibilityLabel(centerLabel(orbits.center))
+
+            if differentiateWithoutColor, let status = orbits.center.status {
+                StatusGlyphBadge(status: status, theme: theme)
+                    .position(x: orbits.center.point.x + 12, y: orbits.center.point.y - 12)
+            }
 
             if !orbits.center.name.isEmpty {
                 Text(orbits.center.name)
@@ -218,7 +255,7 @@ struct OrbitLevelView: View {
                     .accessibilityHidden(true)
             }
 
-            ForEach(orbits.satellites) { sat in
+            ForEach(Array(orbits.satellites.enumerated()), id: \.element.id) { index, sat in
                 StarDisc(color: theme.statusColor(sat.status), diameter: sat.size,
                          focused: sat.id == focusedID)
                     .frame(width: 30, height: 30)
@@ -228,6 +265,12 @@ struct OrbitLevelView: View {
                     .accessibilityLabel(satelliteLabel(sat))
                     .accessibilityIdentifier("worktree.\(sat.branch)")
                     .accessibilityAddTraits(.isButton)
+                    .accessibilitySortPriority(Double(orbits.satellites.count - index))
+
+                if differentiateWithoutColor {
+                    StatusGlyphBadge(status: sat.status, theme: theme)
+                        .position(x: sat.point.x + 8, y: sat.point.y - 8)
+                }
 
                 Text(sat.branch)
                     .font(.system(size: 9, design: .monospaced))
@@ -271,6 +314,7 @@ struct TreeLevelView: View {
     let selected: String
     let theme: Theme
     var focusedID: String? = nil
+    var increaseContrast: Bool = false
     let onSelect: (String) -> Void
     let onCheckout: (String) -> Void
 
@@ -285,7 +329,7 @@ struct TreeLevelView: View {
                     path.move(to: CGPoint(x: edge.from.x, y: edge.from.y))
                     path.addLine(to: CGPoint(x: edge.to.x, y: edge.to.y))
                     ctx.stroke(path,
-                               with: .color(Theme.laneColor(forBranch: edge.branch).opacity(0.55)),
+                               with: .color(Theme.laneColor(forBranch: edge.branch).opacity(increaseContrast ? 0.85 : 0.55)),
                                lineWidth: 2)
                 }
             }
@@ -318,6 +362,8 @@ struct TreeLevelView: View {
                     .accessibilityLabel(commitLabel(node, isHead: isHead))
                     .accessibilityIdentifier("commit.\(node.id)")
                     .accessibilityAddTraits(.isButton)
+                    // VoiceOver walks the tree newest→oldest (higher rank = newer = read first).
+                    .accessibilitySortPriority(Double(node.rank))
 
                 // The commit message reads better than a raw sha at a glance; the full sha still
                 // lives in the a11y label and the Changes panel. Capped + tail-truncated so a long

@@ -56,6 +56,18 @@ public enum Theme: String, Sendable, CaseIterable, Hashable {
         }
     }
 
+    /// Shape-distinct SF Symbol per status, drawn on nodes under Differentiate Without Color so git
+    /// status is legible without relying on hue (WCAG 1.4.1). Theme-independent (shape, not color).
+    public static func statusSymbol(_ status: GitStatus) -> String {
+        switch status {
+        case .clean:     return "checkmark"
+        case .dirty:     return "pencil"
+        case .ahead:     return "arrow.up"
+        case .behind:    return "arrow.down"
+        case .untracked: return "questionmark"
+        }
+    }
+
     // MARK: - Branch lanes (branch-tree level), colored by branch name
 
     /// `main` = Zeus gold, `develop` = indigo, `feature/*` = violet, `fix/*` = cyan. The
