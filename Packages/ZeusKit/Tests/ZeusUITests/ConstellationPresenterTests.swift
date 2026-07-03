@@ -62,6 +62,15 @@ struct ConstellationPresenterTests {
         #expect(presenter(NavigationState(phase: .enter)).pointerEnabled == false)
     }
 
+    // Keyboard focus follows the same idle-only gate as pointer input: an arrow/Return must not
+    // move focus or activate a node while a zoom is mid-flight (SPEC §7: pointer events disabled
+    // off-idle — the same applies to the keyboard so the two input modes can't fight the camera).
+    @Test func keyboardEnabledOnlyWhenIdle() {
+        #expect(presenter(NavigationState(phase: .idle)).keyboardEnabled == true)
+        #expect(presenter(NavigationState(phase: .leave)).keyboardEnabled == false)
+        #expect(presenter(NavigationState(phase: .enter)).keyboardEnabled == false)
+    }
+
     // MARK: - Breadcrumb grows ZeusTerm / {project} / {branch} as you dive
 
     @Test func breadcrumbIsJustTheRootAtHub() {

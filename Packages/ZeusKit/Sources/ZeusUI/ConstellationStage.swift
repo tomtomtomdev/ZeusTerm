@@ -3,11 +3,26 @@ import ZeusDomain
 
 // MARK: - Shared node rendering (SPEC §7: glowing status-colored stars / commit nodes)
 
-/// A glowing star/satellite disc. `ring` draws the white border the hub & repo stars carry.
+/// The keyboard-focus cursor: a dashed ring drawn AROUND a node when it holds keyboard focus. Dashed
+/// (vs the solid HEAD/selected rings) so "focus cursor" reads distinctly from "git state" (SPEC §7
+/// keyboard accessibility). Sized a touch larger than the node it wraps.
+struct FocusRing: View {
+    let diameter: Double
+
+    var body: some View {
+        Circle()
+            .strokeBorder(.white, style: StrokeStyle(lineWidth: 2, dash: [3, 3]))
+            .frame(width: diameter + 12, height: diameter + 12)
+    }
+}
+
+/// A glowing star/satellite disc. `ring` draws the white border the hub & repo stars carry;
+/// `focused` adds the dashed keyboard-focus cursor.
 struct StarDisc: View {
     let color: Color
     let diameter: Double
     var ring: Bool = false
+    var focused: Bool = false
 
     var body: some View {
         Circle()
@@ -20,6 +35,7 @@ struct StarDisc: View {
                     Circle().stroke(.white, lineWidth: 1.5).frame(width: diameter, height: diameter)
                 }
             }
+            .overlay { if focused { FocusRing(diameter: diameter) } }
     }
 }
 
@@ -28,6 +44,7 @@ struct CommitDot: View {
     let color: Color
     let isHead: Bool
     let isSelected: Bool
+    var focused: Bool = false
 
     var body: some View {
         let d: Double = isHead ? 15 : 11
@@ -42,6 +59,7 @@ struct CommitDot: View {
                     Circle().stroke(.white.opacity(0.85), lineWidth: 1.5).frame(width: d + 6, height: d + 6)
                 }
             }
+            .overlay { if focused { FocusRing(diameter: d) } }
     }
 }
 
@@ -106,6 +124,7 @@ struct ConstellationStage<Content: View>: View {
 struct HubLevelView: View {
     let hub: ConstellationHub
     let theme: Theme
+    var focusedID: String? = nil
     let onSelectRepo: (StarNode) -> Void
 
     var body: some View {
@@ -132,7 +151,8 @@ struct HubLevelView: View {
             ForEach(hub.stars) { star in
                 StarDisc(color: star.isHub ? theme.gold : theme.statusColor(star.status ?? .clean),
                          diameter: star.size,
-                         ring: star.isHub)
+                         ring: star.isHub,
+                         focused: star.id == focusedID)
                     .frame(width: 34, height: 34)        // generous invisible hit target
                     .contentShape(Rectangle())
                     .position(x: star.point.x, y: star.point.y)
@@ -169,6 +189,7 @@ struct HubLevelView: View {
 struct OrbitLevelView: View {
     let orbits: ConstellationOrbits
     let theme: Theme
+    var focusedID: String? = nil
     let onSelectWorktree: (SatelliteNode) -> Void
 
     var body: some View {
@@ -198,7 +219,8 @@ struct OrbitLevelView: View {
             }
 
             ForEach(orbits.satellites) { sat in
-                StarDisc(color: theme.statusColor(sat.status), diameter: sat.size)
+                StarDisc(color: theme.statusColor(sat.status), diameter: sat.size,
+                         focused: sat.id == focusedID)
                     .frame(width: 30, height: 30)
                     .contentShape(Rectangle())
                     .position(x: sat.point.x, y: sat.point.y)
@@ -248,6 +270,7 @@ struct TreeLevelView: View {
     let head: String
     let selected: String
     let theme: Theme
+    var focusedID: String? = nil
     let onSelect: (String) -> Void
     let onCheckout: (String) -> Void
 
@@ -283,7 +306,8 @@ struct TreeLevelView: View {
                 let isHead = node.id == head
                 CommitDot(color: Theme.laneColor(forBranch: node.branch),
                           isHead: isHead,
-                          isSelected: !isHead && node.id == selected)
+                          isSelected: !isHead && node.id == selected,
+                          focused: node.id == focusedID)
                     .frame(width: 30, height: 30)
                     .contentShape(Rectangle())
                     .position(x: node.point.x, y: node.point.y)

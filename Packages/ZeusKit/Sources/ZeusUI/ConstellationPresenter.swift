@@ -39,6 +39,12 @@ public struct ConstellationPresenter {
         state.phase == .idle
     }
 
+    /// Keyboard focus/activation follows the same idle-only gate as the pointer — neither input mode
+    /// may move focus or fire an action while the camera is mid-zoom (SPEC §7).
+    public var keyboardEnabled: Bool {
+        state.phase == .idle
+    }
+
     /// The root workspace label shown first in the breadcrumb.
     public static let root = "ZeusTerm"
 

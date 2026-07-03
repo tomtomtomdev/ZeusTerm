@@ -24,6 +24,12 @@ public struct ConstellationShell<TerminalContent: View>: View {
     @State private var diffData: CommitDiffStore?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
+    /// The keyboard-focused node on the current level (SPEC §7: the star map is not mouse-only).
+    /// Reset/seeded reactively as the level's node set changes; `nil` before the first node lands.
+    @State private var focusedID: String?
+    /// Whether the zoom canvas holds keyboard focus — true grabs the arrows for star-map navigation;
+    /// clicking into the terminal hands them back to the PTY.
+    @FocusState private var canvasFocused: Bool
     /// The terminal pane is built *per working directory* (SPEC §2.6, §7): the shell hands the
     /// current cwd to this builder so the PTY opens inside the dived-into repo. Injected as a
     /// closure so this layer stays decoupled from `ZeusTerminal` (SwiftTerm).
@@ -176,33 +182,117 @@ public struct ConstellationShell<TerminalContent: View>: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
+        // Keyboard navigation of the star map (SPEC §7). The canvas holds focus (its own focus ring is
+        // suppressed — we draw a per-node cursor instead); arrows move focus, Return/Space activate,
+        // Escape zooms out. Grabbing focus on appear makes the map arrow-navigable without a click.
+        .focusable()
+        .focused($canvasFocused)
+        .focusEffectDisabled()
+        .onMoveCommand { direction in
+            switch direction {
+            case .up:    moveFocus(.up)
+            case .down:  moveFocus(.down)
+            case .left:  moveFocus(.left)
+            case .right: moveFocus(.right)
+            @unknown default: break
+            }
+        }
+        .onKeyPress(.return) { activateFocus(); return .handled }
+        .onKeyPress(.space)  { activateFocus(); return .handled }
+        .onKeyPress(.escape) { backOut(); return .handled }
+        .onAppear { canvasFocused = true }
+        .onChange(of: focusNodeIDs, initial: true) { _, _ in reseedFocusIfNeeded() }
     }
 
     @ViewBuilder private var stageContent: some View {
         switch store.state.view {
         case .hub:
-            HubLevelView(hub: displayHub, theme: theme) { star in
-                // `star.id` is the repo's filesystem path (real scans) — carried so the worktree
-                // level can load that repo's real git data; `star.name` stays the display label.
-                store.dispatch(.dive(to: .work, focal: star.point,
-                                     context: DiveContext(project: star.name, projectPath: star.id)))
+            HubLevelView(hub: displayHub, theme: theme, focusedID: focusedID) { star in
+                diveIntoRepo(star)
             }
         case .work:
-            OrbitLevelView(orbits: displayOrbits, theme: theme) { sat in
-                // The tip is unknown at dive time; reset it to empty and let the tree store resolve it
-                // from the loaded history (.branchTipResolved), which lands HEAD/selected on the tip.
-                // Fixture stores publish their seeded tip the same way, so the flow is identical.
-                store.dispatch(.dive(to: .tree, focal: sat.point,
-                                     context: DiveContext(worktreeBranch: sat.branch, tip: "")))
+            OrbitLevelView(orbits: displayOrbits, theme: theme, focusedID: focusedID) { sat in
+                diveIntoWorktree(sat)
             }
         case .tree:
             TreeLevelView(tree: displayTree,
                           head: store.state.head,
                           selected: store.state.selected,
                           theme: theme,
+                          focusedID: focusedID,
                           onSelect: { store.dispatch(.selectCommit($0)) },
                           onCheckout: { store.dispatch(.checkout($0)) })
         }
+    }
+
+    // MARK: Node activation (shared by tap and keyboard — same intents, one place)
+
+    /// `star.id` is the repo's filesystem path (real scans) — carried so the worktree level can load
+    /// that repo's real git data; `star.name` stays the display label.
+    private func diveIntoRepo(_ star: StarNode) {
+        store.dispatch(.dive(to: .work, focal: star.point,
+                             context: DiveContext(project: star.name, projectPath: star.id)))
+    }
+
+    /// The tip is unknown at dive time; reset it to empty and let the tree store resolve it from the
+    /// loaded history (`.branchTipResolved`), which lands HEAD/selected on the tip. Fixture stores
+    /// publish their seeded tip the same way, so the flow is identical.
+    private func diveIntoWorktree(_ sat: SatelliteNode) {
+        store.dispatch(.dive(to: .tree, focal: sat.point,
+                             context: DiveContext(worktreeBranch: sat.branch, tip: "")))
+    }
+
+    // MARK: Keyboard navigation of the star map (SPEC §7)
+
+    /// The focusable nodes on the current level, mapped to the shared stage-space focus model.
+    private var focusNodes: [FocusNode] {
+        switch store.state.view {
+        case .hub:  return displayHub.stars.filter { !$0.isHub }.map { FocusNode(id: $0.id, point: $0.point) }
+        case .work: return displayOrbits.satellites.map { FocusNode(id: $0.id, point: $0.point) }
+        case .tree: return displayTree.nodes.map { FocusNode(id: $0.id, point: $0.point) }
+        }
+    }
+
+    /// A lightweight signature of the current level's nodes — drives reactive focus (re)seeding when
+    /// the level changes or its data loads in asynchronously.
+    private var focusNodeIDs: [String] { focusNodes.map(\.id) }
+
+    /// Move keyboard focus one node in `direction` (idle-only, mirroring the pointer gate).
+    private func moveFocus(_ direction: FocusDirection) {
+        guard presenter.keyboardEnabled else { return }
+        if let next = StageFocus.next(from: focusedID, direction: direction, in: focusNodes) {
+            focusedID = next
+        }
+    }
+
+    /// Activate the focused node — the SAME intent a tap dispatches. On the tree, a first Return
+    /// selects and a second Return on the already-selected commit checks it out (the keyboard analog
+    /// of single- vs double-click).
+    private func activateFocus() {
+        guard presenter.keyboardEnabled, let id = focusedID else { return }
+        switch store.state.view {
+        case .hub:
+            if let star = displayHub.stars.first(where: { $0.id == id }) { diveIntoRepo(star) }
+        case .work:
+            if let sat = displayOrbits.satellites.first(where: { $0.id == id }) { diveIntoWorktree(sat) }
+        case .tree:
+            if store.state.selected == id { store.dispatch(.checkout(id)) }
+            else { store.dispatch(.selectCommit(id)) }
+        }
+    }
+
+    /// Escape zooms out one level (idle-only).
+    private func backOut() {
+        guard presenter.keyboardEnabled else { return }
+        store.dispatch(.back)
+    }
+
+    /// Seed focus when the current level's node set appears or changes: keep the existing focus if it
+    /// still exists, else land on the entry node (HEAD on the tree, topmost elsewhere).
+    private func reseedFocusIfNeeded() {
+        if let focusedID, focusNodeIDs.contains(focusedID) { return }
+        let preferred = store.state.view == .tree ? store.state.head : nil
+        focusedID = StageFocus.initialFocus(in: focusNodes, preferred: preferred)
     }
 
     // MARK: Bottom panel (terminal vs Changes)
