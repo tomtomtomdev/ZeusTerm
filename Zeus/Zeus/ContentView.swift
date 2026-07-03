@@ -24,8 +24,9 @@ struct ContentView: View {
 
     var body: some View {
         ConstellationShell(theme: .dark, hubData: hubData, orbitData: orbitData,
-                           treeData: treeData, diffData: diffData) {
-            TerminalEmulatorView(workingDirectory: FileManager.default.homeDirectoryForCurrentUser)
+                           treeData: treeData, diffData: diffData) { cwd in
+            // The shell hands us the dived-into repo path (home at the hub); the PTY opens there.
+            TerminalEmulatorView(workingDirectory: cwd)
         }
         .frame(minWidth: 1100, minHeight: 720)
         .onChange(of: settings.scanRoots) { _, _ in

@@ -18,7 +18,10 @@ public struct ConstellationShell<TerminalContent: View>: View {
     @State private var diffData: CommitDiffStore?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
-    private let terminalContent: TerminalContent
+    /// The terminal pane is built *per working directory* (SPEC §2.6, §7): the shell hands the
+    /// current cwd to this builder so the PTY opens inside the dived-into repo. Injected as a
+    /// closure so this layer stays decoupled from `ZeusTerminal` (SwiftTerm).
+    private let terminalContent: (URL) -> TerminalContent
 
     public init(theme: Theme = .dark,
                 store: NavigationStore = NavigationStore(),
@@ -26,17 +29,22 @@ public struct ConstellationShell<TerminalContent: View>: View {
                 orbitData: WorktreeOrbitStore? = nil,
                 treeData: CommitTreeStore? = nil,
                 diffData: CommitDiffStore? = nil,
-                @ViewBuilder terminalContent: () -> TerminalContent) {
+                @ViewBuilder terminalContent: @escaping (URL) -> TerminalContent) {
         _store = State(initialValue: store)
         _theme = State(initialValue: theme)
         _hubData = State(initialValue: hubData)
         _orbitData = State(initialValue: orbitData)
         _treeData = State(initialValue: treeData)
         _diffData = State(initialValue: diffData)
-        self.terminalContent = terminalContent()
+        self.terminalContent = terminalContent
     }
 
     private var presenter: ConstellationPresenter { ConstellationPresenter(state: store.state) }
+
+    /// The cwd the PTY should open in for the current level (derived, not stored).
+    private var terminalWorkingDirectory: URL {
+        presenter.terminalWorkingDirectory(home: FileManager.default.homeDirectoryForCurrentUser)
+    }
 
     public var body: some View {
         VStack(spacing: 0) {
@@ -175,8 +183,15 @@ public struct ConstellationShell<TerminalContent: View>: View {
     @ViewBuilder private var bottomPanel: some View {
         switch presenter.bottomPanel {
         case .terminal:
-            ZStack { theme.panel; terminalContent }
-                .frame(height: 196)
+            // Open the PTY in the dived-into repo (else home at the hub). `.id(cwd)` gives the
+            // terminal a per-directory identity so SwiftTerm relaunches the shell in the new cwd
+            // when the user dives in/out — `updateNSView` alone can't re-root a running PTY.
+            let cwd = terminalWorkingDirectory
+            ZStack {
+                theme.panel
+                terminalContent(cwd).id(cwd)
+            }
+            .frame(height: 196)
         case .changes:
             // Commit header comes from the displayed tree; the diff comes from the injected
             // `CommitDiffStore` (live git in the app, sample-backed in previews / `-uiTestFixtures`).
@@ -195,7 +210,7 @@ public struct ConstellationShell<TerminalContent: View>: View {
 extension ConstellationShell where TerminalContent == TerminalPlaceholder {
     @MainActor
     public static func sample(theme: Theme = .dark) -> ConstellationShell {
-        sample(theme: theme) { TerminalPlaceholder() }
+        sample(theme: theme) { _ in TerminalPlaceholder() }
     }
 }
 
@@ -208,7 +223,7 @@ extension ConstellationShell {
     /// SwiftUI previews, the ZoomSpike harness, and the deterministic `-uiTestFixtures` UI-test build.
     @MainActor
     public static func sample(theme: Theme = .dark,
-                              @ViewBuilder terminalContent: () -> TerminalContent) -> ConstellationShell {
+                              @ViewBuilder terminalContent: @escaping (URL) -> TerminalContent) -> ConstellationShell {
         ConstellationShell(
             theme: theme,
             hubData: HubDataStore(fixtureHub: SampleConstellationData.hub),

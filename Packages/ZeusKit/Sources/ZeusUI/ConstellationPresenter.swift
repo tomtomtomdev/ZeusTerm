@@ -20,6 +20,15 @@ public struct ConstellationPresenter {
         state.view == .tree ? .changes : .terminal
     }
 
+    /// Where the PTY should open (SPEC §2.6, §7 — "a terminal that already knows the right working
+    /// directory"): the dived-into repo's path once the user is inside it, else `home`. The hub isn't
+    /// inside any repo, so it always uses `home` — even though the reducer leaves `projectPath` set
+    /// after backing out, that stale path must not follow the user back up to "all projects".
+    public func terminalWorkingDirectory(home: URL) -> URL {
+        guard state.view != .hub, let projectPath = state.projectPath else { return home }
+        return URL(fileURLWithPath: projectPath)
+    }
+
     /// The frosted ‹ Back pill floats top-left only below the hub.
     public var showsBackPill: Bool {
         state.view != .hub

@@ -24,6 +24,28 @@ struct ConstellationPresenterTests {
         #expect(presenter(NavigationState(view: .tree)).bottomPanel == .changes)
     }
 
+    // MARK: - Terminal working directory follows the dived-into repo (SPEC §2.6, §7)
+
+    private let home = URL(fileURLWithPath: "/Users/zeus")
+
+    @Test func terminalUsesHomeAtTheHubWithNoProject() {
+        let state = NavigationState(view: .hub)
+        #expect(presenter(state).terminalWorkingDirectory(home: home) == home)
+    }
+
+    @Test func terminalUsesTheDivedIntoRepoPathAtTheWorktreeLevel() {
+        let state = NavigationState(view: .work, projectPath: "/code/zeus")
+        #expect(presenter(state).terminalWorkingDirectory(home: home)
+                == URL(fileURLWithPath: "/code/zeus"))
+    }
+
+    // Backing out to the hub leaves `projectPath` set (the reducer never clears it), but the hub
+    // isn't inside any repo — the terminal must fall back to home, not the stale path.
+    @Test func terminalIgnoresAStaleProjectPathAtTheHub() {
+        let state = NavigationState(view: .hub, projectPath: "/code/zeus")
+        #expect(presenter(state).terminalWorkingDirectory(home: home) == home)
+    }
+
     // MARK: - Back pill floats only below the hub
 
     @Test func backPillHiddenAtHubVisibleDeeper() {
