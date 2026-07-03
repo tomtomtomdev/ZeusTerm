@@ -116,4 +116,20 @@ public struct GradientConfig: Codable, Sendable, Equatable {
     public static func preset(named name: String) -> GradientConfig? {
         presets.first { $0.name == name }?.config
     }
+
+    // MARK: - Import / export (SPEC §2.7)
+
+    /// A human-readable JSON representation for sharing/backing up a gradient (pretty-printed,
+    /// keys sorted so the output is stable and diffable).
+    public func exportedJSON() throws -> String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return String(decoding: try encoder.encode(self), as: UTF8.self)
+    }
+
+    /// Parses a gradient from JSON. Unknown keys are ignored (forward-compatible); malformed input
+    /// throws so the caller can surface an import error rather than silently substituting a default.
+    public static func imported(fromJSON json: String) throws -> GradientConfig {
+        try JSONDecoder().decode(GradientConfig.self, from: Data(json.utf8))
+    }
 }
