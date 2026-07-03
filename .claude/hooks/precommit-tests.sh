@@ -24,9 +24,17 @@ if [ -f "$PKG/Package.swift" ]; then
 fi
 
 # 2) App unit tests. UI tests run separately via /verify (signing + app launch, too slow here).
+# Skip when the host macOS is older than the app's deployment target: xcodebuild test can't build
+# or run the target there (a false red, not a broken suite), so gating on it would be unsatisfiable.
+# The SPM suite above still gates, and the full app test runs on a machine that meets the target.
 if [ -d "$PROJ" ]; then
   echo "=== xcodebuild test (ZeusTests) ===" >>"$LOG"
-  if ! xcodebuild test \
+  host_major="$(sw_vers -productVersion | cut -d. -f1)"
+  target_major="$(grep -m1 -o 'MACOSX_DEPLOYMENT_TARGET = [0-9.]*' "$PROJ/project.pbxproj" \
+                    | grep -o '[0-9.]*' | cut -d. -f1)"
+  if [ -n "$host_major" ] && [ -n "$target_major" ] && [ "$host_major" -lt "$target_major" ]; then
+    echo "SKIPPED: host macOS $host_major < deployment target $target_major; ZeusTests can't run here (verify on macOS $target_major)." >>"$LOG"
+  elif ! xcodebuild test \
         -project "$PROJ" \
         -scheme Zeus \
         -destination 'platform=macOS' \
