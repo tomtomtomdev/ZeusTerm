@@ -1,5 +1,12 @@
 import Foundation
 
+/// The dark/light appearance preference (feature #7). Pure domain data — the SwiftUI `Theme`
+/// token table in ZeusUI maps from it (shared raw values). Persisted in `ZeusSettings` so the
+/// topbar sun/moon toggle survives relaunch.
+public enum ThemeMode: String, Codable, Sendable, CaseIterable {
+    case dark, light
+}
+
 /// User-configurable app settings. Persisted by a `SettingsStoring` adapter.
 public struct ZeusSettings: Codable, Sendable, Equatable {
     public var gradient: GradientConfig
@@ -9,9 +16,24 @@ public struct ZeusSettings: Codable, Sendable, Equatable {
     /// the DTO stays Codable/Sendable without a `URL` dependency leaking into persistence.
     public var scanRoots: [String]
 
-    public init(gradient: GradientConfig = .aurora, scanRoots: [String] = []) {
+    /// The persisted dark/light preference (feature #7, P7-A).
+    public var theme: ThemeMode
+
+    public init(gradient: GradientConfig = .aurora, scanRoots: [String] = [], theme: ThemeMode = .dark) {
         self.gradient = gradient
         self.scanRoots = scanRoots
+        self.theme = theme
+    }
+
+    // Custom decoding so settings persisted before a key existed still load: a missing `theme`
+    // (pre-P7-A) falls back to `.dark` rather than failing the whole decode.
+    private enum CodingKeys: String, CodingKey { case gradient, scanRoots, theme }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        gradient = try container.decode(GradientConfig.self, forKey: .gradient)
+        scanRoots = try container.decodeIfPresent([String].self, forKey: .scanRoots) ?? []
+        theme = try container.decodeIfPresent(ThemeMode.self, forKey: .theme) ?? .dark
     }
 }
 
