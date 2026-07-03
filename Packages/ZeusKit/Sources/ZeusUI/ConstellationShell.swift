@@ -61,6 +61,10 @@ public struct ConstellationShell<TerminalContent: View>: View {
         if let settings { settings.toggleTheme() } else { localTheme = localTheme.toggled }
     }
 
+    /// The configurable background gradient (feature #7): the persisted config when a store is
+    /// present, else the Aurora default for previews/fixtures.
+    private var gradientConfig: GradientConfig { settings?.gradient ?? .aurora }
+
     /// The cwd the PTY should open in for the current level (derived, not stored).
     private var terminalWorkingDirectory: URL {
         presenter.terminalWorkingDirectory(home: FileManager.default.homeDirectoryForCurrentUser)
@@ -150,7 +154,10 @@ public struct ConstellationShell<TerminalContent: View>: View {
 
     private var canvas: some View {
         ZStack(alignment: .topLeading) {
-            RadialGradient(colors: [theme.elevated.opacity(0.5), theme.appBackground],
+            // Feature #7: the configurable (optionally animated mesh) gradient, behind everything.
+            GradientBackground(config: gradientConfig)
+            // Nebula vignette on top of it for depth, tinted to the active theme.
+            RadialGradient(colors: [theme.elevated.opacity(0.5), theme.appBackground.opacity(0.35)],
                            center: .center, startRadius: 0, endRadius: 520)
                 .ignoresSafeArea()
 

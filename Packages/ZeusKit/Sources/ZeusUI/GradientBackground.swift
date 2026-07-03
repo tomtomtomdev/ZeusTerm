@@ -2,9 +2,11 @@ import SwiftUI
 import ZeusDomain
 
 /// Renders the configurable gradient background (feature #7) from a `GradientConfig`.
-/// P0 covers linear/radial/angular; animated `MeshGradient` lands in P7 (SPEC §2.7).
+/// P7 adds the animated `MeshGradient` (nebula) case; linear/radial/angular are static.
+/// Layout/animation math lives in the pure, tested `MeshGradientPlan`.
 public struct GradientBackground: View {
     public var config: GradientConfig
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(config: GradientConfig) {
         self.config = config
@@ -19,13 +21,57 @@ public struct GradientBackground: View {
     @ViewBuilder private var gradient: some View {
         let colors = config.colorsHex.map(Color.init(hex:))
         switch config.style {
-        case .linear, .mesh: // mesh falls back to linear until P7
+        case .mesh:
+            MeshNebula(plan: MeshGradientPlan(config: config), reduceMotion: reduceMotion)
+        case .linear:
             LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
         case .radial:
             RadialGradient(colors: colors, center: .center, startRadius: 0, endRadius: 600)
         case .angular:
             AngularGradient(colors: colors, center: .center, angle: .degrees(config.angleDegrees))
         }
+    }
+}
+
+/// The animated mesh "nebula": a `MeshGradient` whose interior control points drift on a slow loop
+/// (off under Reduce Motion). Corners stay pinned so the fill always covers the bleed.
+private struct MeshNebula: View {
+    let plan: MeshGradientPlan
+    let reduceMotion: Bool
+
+    var body: some View {
+        if plan.isAnimating(reduceMotion: reduceMotion) {
+            TimelineView(.animation) { timeline in
+                let phase = timeline.date.timeIntervalSinceReferenceDate * (2 * .pi / plan.animationDuration)
+                mesh(driftPhase: phase)
+            }
+        } else {
+            mesh(driftPhase: nil)
+        }
+    }
+
+    private func mesh(driftPhase: Double?) -> some View {
+        MeshGradient(
+            width: plan.columns,
+            height: plan.rows,
+            points: plan.points.enumerated().map { index, point in
+                drifted(point, index: index, phase: driftPhase)
+            },
+            colors: plan.colorsHex.map(Color.init(hex:))
+        )
+    }
+
+    /// Nudges interior points (never the pinned border) along a small circle keyed off their index,
+    /// so the mesh breathes like a nebula. Border points return unchanged.
+    private func drifted(_ p: MeshGradientPlan.Point, index: Int, phase: Double?) -> SIMD2<Float> {
+        guard let phase, p.x > 0, p.x < 1, p.y > 0, p.y < 1 else {
+            return SIMD2(p.x, p.y)
+        }
+        let amplitude: Float = 0.06
+        let offset = Double(index) * 1.3
+        let dx = Float(cos(phase + offset)) * amplitude
+        let dy = Float(sin(phase + offset)) * amplitude
+        return SIMD2(p.x + dx, p.y + dy)
     }
 }
 
