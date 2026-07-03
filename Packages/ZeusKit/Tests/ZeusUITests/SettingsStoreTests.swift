@@ -15,6 +15,13 @@ import ZeusDomain
 ///  [x] addRoot ignores a duplicate (no second copy, no extra write)
 ///  [x] removeRoot drops the path and persists
 ///  [x] resetRoots clears every configured root and persists
+///  P7-D — theme + gradient intents:
+///  [x] init paints the persisted theme
+///  [x] toggleTheme flips dark↔light and persists
+///  [x] init paints the persisted gradient
+///  [x] updateGradient replaces the gradient and persists
+///  [x] applyGradientPreset(named:) applies a known preset and persists; unknown name is a no-op
+///  [x] importGradient(fromJSON:) applies parsed JSON and persists; malformed JSON throws, no write
 @MainActor
 struct SettingsStoreTests {
 
@@ -92,5 +99,84 @@ struct SettingsStoreTests {
         #expect(store.scanRoots.isEmpty)
         #expect(backing.stored.scanRoots.isEmpty)
         #expect(backing.saveCount == 1)
+    }
+
+    // MARK: - P7-D theme + gradient
+
+    @Test func initPaintsThePersistedTheme() {
+        let store = SettingsStore(store: FakeSettingsStore(ZeusSettings(theme: .light)))
+
+        #expect(store.theme == .light)
+    }
+
+    @Test func toggleThemeFlipsAndPersists() {
+        let backing = FakeSettingsStore(ZeusSettings(theme: .dark))
+        let store = SettingsStore(store: backing)
+
+        store.toggleTheme()
+
+        #expect(store.theme == .light)
+        #expect(backing.stored.theme == .light)
+        #expect(backing.saveCount == 1)
+    }
+
+    @Test func initPaintsThePersistedGradient() {
+        let store = SettingsStore(store: FakeSettingsStore(ZeusSettings(gradient: .sunset)))
+
+        #expect(store.gradient == .sunset)
+    }
+
+    @Test func updateGradientReplacesAndPersists() {
+        let backing = FakeSettingsStore(ZeusSettings(gradient: .aurora))
+        let store = SettingsStore(store: backing)
+
+        store.updateGradient(.sunset)
+
+        #expect(store.gradient == .sunset)
+        #expect(backing.stored.gradient == .sunset)
+        #expect(backing.saveCount == 1)
+    }
+
+    @Test func applyGradientPresetAppliesAKnownPreset() {
+        let backing = FakeSettingsStore(ZeusSettings(gradient: .aurora))
+        let store = SettingsStore(store: backing)
+
+        store.applyGradientPreset(named: "Matrix")
+
+        #expect(store.gradient == .matrix)
+        #expect(backing.stored.gradient == .matrix)
+        #expect(backing.saveCount == 1)
+    }
+
+    @Test func applyGradientPresetIgnoresAnUnknownName() {
+        let backing = FakeSettingsStore(ZeusSettings(gradient: .aurora))
+        let store = SettingsStore(store: backing)
+
+        store.applyGradientPreset(named: "Nope")
+
+        #expect(store.gradient == .aurora)
+        #expect(backing.saveCount == 0)
+    }
+
+    @Test func importGradientAppliesParsedJSONAndPersists() throws {
+        let backing = FakeSettingsStore(ZeusSettings(gradient: .aurora))
+        let store = SettingsStore(store: backing)
+
+        try store.importGradient(fromJSON: try GradientConfig.sunset.exportedJSON())
+
+        #expect(store.gradient == .sunset)
+        #expect(backing.stored.gradient == .sunset)
+        #expect(backing.saveCount == 1)
+    }
+
+    @Test func importGradientRejectsMalformedJSONWithoutWriting() {
+        let backing = FakeSettingsStore(ZeusSettings(gradient: .aurora))
+        let store = SettingsStore(store: backing)
+
+        #expect(throws: (any Error).self) {
+            try store.importGradient(fromJSON: "{ broken")
+        }
+        #expect(store.gradient == .aurora)
+        #expect(backing.saveCount == 0)
     }
 }

@@ -11,6 +11,14 @@ public enum Theme: String, Sendable, CaseIterable, Hashable {
     /// The opposite theme — drives the topbar sun/moon toggle.
     public var toggled: Theme { self == .dark ? .light : .dark }
 
+    // MARK: - Domain bridge (P7-D)
+
+    /// Maps from the pure domain `ThemeMode` persisted in `ZeusSettings`.
+    public init(mode: ThemeMode) { self = mode == .dark ? .dark : .light }
+
+    /// The pure domain representation, for persisting the user's choice.
+    public var mode: ThemeMode { self == .dark ? .dark : .light }
+
     // MARK: - Surface & text tokens (dark = SPEC §7; light = static frame ③)
 
     public var appBackgroundHex: String { self == .dark ? "#0A0B10" : "#F6F7FB" }

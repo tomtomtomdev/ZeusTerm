@@ -32,6 +32,14 @@ struct ThemeTests {
         #expect(Theme.light.toggled == .dark)
     }
 
+    /// The UI token table bridges to the pure domain `ThemeMode` persisted in ZeusSettings (P7-D).
+    @Test func bridgesToAndFromTheDomainThemeMode() {
+        #expect(Theme(mode: .dark) == .dark)
+        #expect(Theme(mode: .light) == .light)
+        #expect(Theme.dark.mode == ThemeMode.dark)
+        #expect(Theme.light.mode == ThemeMode.light)
+    }
+
     @Test func gitStatusIsTheSemanticColorScale() {
         #expect(Theme.dark.statusHex(.clean) == "#35D08B")
         #expect(Theme.dark.statusHex(.dirty) == "#F5A623")

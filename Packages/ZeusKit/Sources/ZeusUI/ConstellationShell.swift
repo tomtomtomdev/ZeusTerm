@@ -8,7 +8,13 @@ import ZeusDomain
 /// injected via a `@ViewBuilder` so this layer stays decoupled from `ZeusTerminal` (SwiftTerm).
 public struct ConstellationShell<TerminalContent: View>: View {
     @State private var store: NavigationStore
-    @State private var theme: Theme
+    /// Ephemeral theme for the storeless paths (previews / ZoomSpike / `-uiTestFixtures`). When a
+    /// `settings` store is injected the *persisted* theme wins (see `theme`) so the sun/moon toggle
+    /// survives relaunch (P7-D).
+    @State private var localTheme: Theme
+    /// The shared settings store (P7-D): drives the persisted theme + gradient. Optional so the
+    /// preview/fixture paths render without a store.
+    @State private var settings: SettingsStore?
     /// The four level stores. The app injects live-git stores; previews / ZoomSpike / `-uiTestFixtures`
     /// inject sample-backed *fixture* stores (see `ConstellationShell.sample`). When a store is nil the
     /// shell paints a neutral empty level — it never reaches for a specific fixture itself (slice 7(b)).
@@ -25,13 +31,15 @@ public struct ConstellationShell<TerminalContent: View>: View {
 
     public init(theme: Theme = .dark,
                 store: NavigationStore = NavigationStore(),
+                settings: SettingsStore? = nil,
                 hubData: HubDataStore? = nil,
                 orbitData: WorktreeOrbitStore? = nil,
                 treeData: CommitTreeStore? = nil,
                 diffData: CommitDiffStore? = nil,
                 @ViewBuilder terminalContent: @escaping (URL) -> TerminalContent) {
         _store = State(initialValue: store)
-        _theme = State(initialValue: theme)
+        _localTheme = State(initialValue: theme)
+        _settings = State(initialValue: settings)
         _hubData = State(initialValue: hubData)
         _orbitData = State(initialValue: orbitData)
         _treeData = State(initialValue: treeData)
@@ -40,6 +48,18 @@ public struct ConstellationShell<TerminalContent: View>: View {
     }
 
     private var presenter: ConstellationPresenter { ConstellationPresenter(state: store.state) }
+
+    /// The active theme: the persisted preference when a settings store is present, else the
+    /// ephemeral local one. Reading `settings.theme` (an `@Observable`) re-renders on toggle (UDF).
+    private var theme: Theme {
+        if let settings { return Theme(mode: settings.theme) }
+        return localTheme
+    }
+
+    /// The sun/moon toggle intent — persists through the store when present, else flips locally.
+    private func toggleTheme() {
+        if let settings { settings.toggleTheme() } else { localTheme = localTheme.toggled }
+    }
 
     /// The cwd the PTY should open in for the current level (derived, not stored).
     private var terminalWorkingDirectory: URL {
@@ -50,7 +70,7 @@ public struct ConstellationShell<TerminalContent: View>: View {
         VStack(spacing: 0) {
             ConstellationTopBar(presenter: presenter, theme: theme,
                                 onCrumb: { store.dispatch(.backTo($0)) },
-                                onToggleTheme: { theme = theme.toggled })
+                                onToggleTheme: { toggleTheme() })
             Divider().overlay(theme.accentSoft)
             if hubData?.liveRefreshNeedsFullDiskAccess == true {
                 FullDiskAccessBanner(theme: theme) { hubData?.dismissFullDiskAccessHint() }

@@ -23,7 +23,8 @@ struct ContentView: View {
     let settings: SettingsStore
 
     var body: some View {
-        ConstellationShell(theme: .dark, hubData: hubData, orbitData: orbitData,
+        ConstellationShell(theme: Theme(mode: settings.theme), settings: settings,
+                           hubData: hubData, orbitData: orbitData,
                            treeData: treeData, diffData: diffData) { cwd in
             // The shell hands us the dived-into repo path (home at the hub); the PTY opens there.
             TerminalEmulatorView(workingDirectory: cwd)

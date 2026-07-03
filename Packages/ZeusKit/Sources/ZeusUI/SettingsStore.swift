@@ -46,6 +46,51 @@ public final class SettingsStore {
         persist()
     }
 
+    // MARK: - Theme (P7-D)
+
+    /// The persisted dark/light preference behind the topbar sun/moon toggle.
+    public var theme: ThemeMode { settings.theme }
+
+    /// Flips the theme and persists it (the sun/moon toggle intent).
+    public func toggleTheme() {
+        settings.theme = settings.theme == .dark ? .light : .dark
+        persist()
+    }
+
+    public func setTheme(_ theme: ThemeMode) {
+        guard settings.theme != theme else { return }
+        settings.theme = theme
+        persist()
+    }
+
+    // MARK: - Gradient (P7-D)
+
+    /// The configured background gradient (feature #7).
+    public var gradient: GradientConfig { settings.gradient }
+
+    /// Replaces the whole gradient — the live-preview editor binds sub-fields and calls this.
+    public func updateGradient(_ gradient: GradientConfig) {
+        guard settings.gradient != gradient else { return }
+        settings.gradient = gradient
+        persist()
+    }
+
+    /// Applies a named preset from the catalog; an unknown name is a no-op (no write).
+    public func applyGradientPreset(named name: String) {
+        guard let preset = GradientConfig.preset(named: name) else { return }
+        updateGradient(preset)
+    }
+
+    /// Applies a gradient parsed from JSON; rethrows a parse failure without mutating/persisting.
+    public func importGradient(fromJSON json: String) throws {
+        updateGradient(try GradientConfig.imported(fromJSON: json))
+    }
+
+    /// Serializes the current gradient for export/sharing (SPEC §2.7).
+    public func exportedGradientJSON() throws -> String {
+        try settings.gradient.exportedJSON()
+    }
+
     private func persist() {
         try? store.save(settings)
     }
