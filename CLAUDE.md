@@ -52,7 +52,7 @@ changing behavior, so:
 - Use `/simplify` for reuse/efficiency passes once a feature lands.
 
 ## Stack
-- Swift 6.2 (strict concurrency), SwiftUI + AppKit bridges. Target **macOS 26**.
+- Swift 6.2 (strict concurrency), SwiftUI + AppKit bridges. Target **macOS 15**.
 - Terminal: **SwiftTerm** (PTY). Git reads: **SwiftGitX/SwiftGit2** (libgit2). Worktrees: **`git` CLI shell-out**.
 - Discovery: FileManager + NSMetadataQuery + FSEvents. Persistence: SwiftData (settings) + GRDB/SQLite (index).
 - Distribution: Developer ID + notarized, non-sandboxed (v1). Full Disk Access on first run.

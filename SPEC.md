@@ -5,7 +5,7 @@
 > beautifully animated, gradient-themed interface with a full-fledged embedded terminal and
 > fish-style right-arrow autocomplete.
 
-**Status:** Greenfield spec. **Target:** macOS 26 (Tahoe), Apple Silicon. **Lang:** Swift 6.2 / SwiftUI + AppKit bridges.
+**Status:** Greenfield spec. **Target:** macOS 15 (Sequoia), Apple Silicon. **Lang:** Swift 6.2 / SwiftUI + AppKit bridges.
 
 ---
 
@@ -179,7 +179,7 @@ and the inconclusive-spike default above. Revisit only if v2 needs faster cold s
 
 | Concern | Choice | Notes |
 |---------|--------|-------|
-| Language / UI | Swift 6.2, SwiftUI (+ AppKit bridges) | Target macOS 26; `MeshGradient` needs 15+. |
+| Language / UI | Swift 6.2, SwiftUI (+ AppKit bridges) | Target macOS 15; `MeshGradient` needs 15+. |
 | Terminal | **SwiftTerm** (`migueldeicaza/SwiftTerm`) | Pure-Swift, stable API, AppKit view. `libghostty` = future GPU path. |
 | Git reads | **SwiftGitX** or **SwiftGit2/SwiftGit3** (libgit2) | Branches, commits, status. |
 | Worktrees | **`git` CLI shell-out** (`worktree list --porcelain`) | libgit2 worktree bindings are thin. |
