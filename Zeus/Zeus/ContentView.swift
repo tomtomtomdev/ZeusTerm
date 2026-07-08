@@ -21,6 +21,14 @@ struct ContentView: View {
     let treeData: CommitTreeStore
     let diffData: CommitDiffStore
     let settings: SettingsStore
+    // P6 (feature #4) stores, injected by the composition root. Not yet rendered: the app-managed
+    // SuggestionInputLine needs its TerminalSession attached to the *same* PTY the user sees, which
+    // means reconciling the TerminalController / TerminalSession adapters first (both implement
+    // TerminalSessionControlling; TerminalSession.attach has no caller yet). Threaded here now so
+    // ZeusApp compiles and the wiring lands in one place when P6 is finished. TODO(P6): render the
+    // suggestion line over the shared session and prove it via /verify.
+    let suggestion: SuggestionStore
+    let terminalSession: TerminalSession
 
     var body: some View {
         ConstellationShell(theme: Theme(mode: settings.theme), settings: settings,
