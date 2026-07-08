@@ -46,9 +46,9 @@ public struct ConstellationPresenter {
     }
 
     /// The root workspace label shown first in the breadcrumb.
-    public static let root = "ZeusTerm"
+    public static let root = "Asteris"
 
-    /// `ZeusTerm / {project} / {branch}` — grows one segment per level dived into.
+    /// `Asteris / {project} / {branch}` — grows one segment per level dived into.
     public var breadcrumb: [String] {
         var crumbs = [Self.root]
         if state.view == .work || state.view == .tree, let project = state.project {

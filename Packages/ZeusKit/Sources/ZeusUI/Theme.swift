@@ -70,7 +70,7 @@ public enum Theme: String, Sendable, CaseIterable, Hashable {
 
     // MARK: - Branch lanes (branch-tree level), colored by branch name
 
-    /// `main` = Zeus gold, `develop` = indigo, `feature/*` = violet, `fix/*` = cyan. The
+    /// `main` = Asteris gold, `develop` = indigo, `feature/*` = violet, `fix/*` = cyan. The
     /// `auth`/`cache` aliases match the prototype's short lane keys (see `SampleConstellationData`).
     public static func laneHex(forBranch branch: String) -> String {
         switch branch {

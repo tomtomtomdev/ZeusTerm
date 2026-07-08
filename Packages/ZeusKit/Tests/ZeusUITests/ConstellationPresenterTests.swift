@@ -71,20 +71,20 @@ struct ConstellationPresenterTests {
         #expect(presenter(NavigationState(phase: .enter)).keyboardEnabled == false)
     }
 
-    // MARK: - Breadcrumb grows ZeusTerm / {project} / {branch} as you dive
+    // MARK: - Breadcrumb grows Asteris / {project} / {branch} as you dive
 
     @Test func breadcrumbIsJustTheRootAtHub() {
-        #expect(presenter(NavigationState(view: .hub)).breadcrumb == ["ZeusTerm"])
+        #expect(presenter(NavigationState(view: .hub)).breadcrumb == ["Asteris"])
     }
 
     @Test func breadcrumbAddsProjectAtWorktrees() {
         let state = NavigationState(view: .work, project: "tuntun-api")
-        #expect(presenter(state).breadcrumb == ["ZeusTerm", "tuntun-api"])
+        #expect(presenter(state).breadcrumb == ["Asteris", "tuntun-api"])
     }
 
     @Test func breadcrumbAddsProjectAndBranchAtTree() {
         let state = NavigationState(view: .tree, project: "tuntun-api", worktreeBranch: "develop")
-        #expect(presenter(state).breadcrumb == ["ZeusTerm", "tuntun-api", "develop"])
+        #expect(presenter(state).breadcrumb == ["Asteris", "tuntun-api", "develop"])
     }
 
     // MARK: - Detached badge appears once HEAD diverges from the branch tip

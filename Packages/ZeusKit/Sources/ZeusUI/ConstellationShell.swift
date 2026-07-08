@@ -379,8 +379,8 @@ struct ConstellationTopBar: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Label("ZeusTerm", systemImage: "bolt.fill")
-                .font(.system(size: 13, weight: .bold))
+            Label("Asteris", systemImage: "sparkles")
+                .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(theme.gold)
 
             Rectangle().fill(theme.accentSoft).frame(width: 1, height: 18)
