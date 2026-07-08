@@ -37,6 +37,13 @@ ticket → validates. The finished app lands at `build/export/Zeus.app`. Verify 
 spctl -a -vvv --type execute build/export/Zeus.app
 ```
 
+Then package the stapled app into a distributable disk image (drag-to-`/Applications` layout,
+`hdiutil`-only — no Homebrew dependency):
+```sh
+scripts/make-dmg.sh                                   # → build/Zeus-<version>.dmg
+TEAM_ID=ABCDE12345 NOTARIZE_DMG=1 scripts/make-dmg.sh # also notarizes + staples the dmg itself
+```
+
 ## ⚠️ Host requirement / deployment-target divergence
 - The **app target** is `MACOSX_DEPLOYMENT_TARGET = 26.2`; the **ZeusKit package** floor is
   `macOS 15`. So the SPM unit tests (`swift test`) run on any recent Mac, but **archiving/running the
