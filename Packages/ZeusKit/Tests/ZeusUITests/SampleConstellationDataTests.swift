@@ -17,16 +17,15 @@ struct SampleConstellationDataTests {
         #expect(hub.stars.first?.isHub == true)
         #expect(hub.stars.first?.name == "tuntun-mono")
         #expect(hub.labels.count == 6)                        // one floating label per cluster type
-        #expect(hub.stars.contains { $0.name == "ZeusTerm" && $0.status == .dirty })
+        #expect(hub.stars.contains { $0.name == "Asteris" && $0.status == .dirty })
     }
 
-    @Test func orbitsHaveTenSatellitesAcrossThreeRings() {
+    @Test func orbitsSeatTenPlanetsOneOrbitEach() {
         let orbits = SampleConstellationData.orbits
-        #expect(orbits.rings.count == 3)
-        #expect(orbits.satellites.count == 10)
-        let cache = orbits.satellites.first { $0.branch == "fix/cache-ttl" }
+        #expect(orbits.planets.count == 10)                   // one orbit per worktree
+        let cache = orbits.planets.first { $0.branch == "fix/cache-ttl" }
         #expect(cache?.status == .behind)
-        #expect(orbits.satellites.contains { $0.branch == "feature/oauth-pkce" })
+        #expect(orbits.planets.contains { $0.branch == "feature/oauth-pkce" })
     }
 
     @Test func treeHasThirteenCommitsHeadAtTipNewestOnTop() {

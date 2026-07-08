@@ -143,7 +143,7 @@ public struct ConstellationShell<TerminalContent: View>: View {
 
     /// Worktree source: the store's orbits once loaded, else a neutral empty orbit (just the repo
     /// star at the canonical center) — shown while loading or when no store is injected.
-    private var displayOrbits: ConstellationOrbits {
+    private var displayOrbits: SideOnOrbits {
         orbitData?.orbits ?? .empty(center: WorktreeOrbitStore.defaultCenter)
     }
 
@@ -217,9 +217,10 @@ public struct ConstellationShell<TerminalContent: View>: View {
             }
         case .work:
             OrbitLevelView(orbits: displayOrbits, theme: theme, focusedID: focusedID,
+                           reduceMotion: reduceMotion,
                            differentiateWithoutColor: differentiateWithoutColor,
-                           increaseContrast: increaseContrast) { sat in
-                diveIntoWorktree(sat)
+                           increaseContrast: increaseContrast) { planet, focal in
+                diveIntoWorktree(planet, focal: focal)
             }
         case .tree:
             TreeLevelView(tree: displayTree,
@@ -248,9 +249,9 @@ public struct ConstellationShell<TerminalContent: View>: View {
     /// The tip is unknown at dive time; reset it to empty and let the tree store resolve it from the
     /// loaded history (`.branchTipResolved`), which lands HEAD/selected on the tip. Fixture stores
     /// publish their seeded tip the same way, so the flow is identical.
-    private func diveIntoWorktree(_ sat: SatelliteNode) {
-        store.dispatch(.dive(to: .tree, focal: sat.point,
-                             context: DiveContext(worktreeBranch: sat.branch, tip: "")))
+    private func diveIntoWorktree(_ planet: OrbitPlanet, focal: StagePoint) {
+        store.dispatch(.dive(to: .tree, focal: focal,
+                             context: DiveContext(worktreeBranch: planet.branch, tip: "")))
     }
 
     // MARK: Keyboard navigation of the star map (SPEC §7)
@@ -259,7 +260,9 @@ public struct ConstellationShell<TerminalContent: View>: View {
     private var focusNodes: [FocusNode] {
         switch store.state.view {
         case .hub:  return displayHub.stars.filter { !$0.isHub }.map { FocusNode(id: $0.id, point: $0.point) }
-        case .work: return displayOrbits.satellites.map { FocusNode(id: $0.id, point: $0.point) }
+        // Planets animate; anchor keyboard focus geometry on the frozen t=0 frame (what the focus
+        // ring is drawn against under Reduce Motion, and a stable target otherwise).
+        case .work: return displayOrbits.planets.map { FocusNode(id: $0.id, point: displayOrbits.state(of: $0, at: 0).point) }
         case .tree: return displayTree.nodes.map { FocusNode(id: $0.id, point: $0.point) }
         }
     }
@@ -286,7 +289,9 @@ public struct ConstellationShell<TerminalContent: View>: View {
         case .hub:
             if let star = displayHub.stars.first(where: { $0.id == id }) { diveIntoRepo(star) }
         case .work:
-            if let sat = displayOrbits.satellites.first(where: { $0.id == id }) { diveIntoWorktree(sat) }
+            if let planet = displayOrbits.planets.first(where: { $0.id == id }) {
+                diveIntoWorktree(planet, focal: displayOrbits.state(of: planet, at: 0).point)
+            }
         case .tree:
             switch StageFocus.treeActivation(focused: id, selected: store.state.selected, head: store.state.head) {
             case let .select(sha):   store.dispatch(.selectCommit(sha))

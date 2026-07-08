@@ -43,7 +43,7 @@ public enum SampleConstellationData {
             MemberInput(name: "ScanSDK", status: .clean),
         ]),
         cluster(.macos, [
-            MemberInput(name: "ZeusTerm", status: .dirty),
+            MemberInput(name: "Asteris", status: .dirty),
             MemberInput(name: "MenuBarX", status: .clean),
             MemberInput(name: "ColorPick", status: .ahead),
         ]),
@@ -66,10 +66,6 @@ public enum SampleConstellationData {
     /// sample can't drift from the center a live repo's worktrees orbit.
     public static let worktreeCenter = WorktreeOrbitStore.defaultCenter
 
-    /// Sized by the real `OrbitRingPlanner` from the worktree count rather than hand-listed radii, so
-    /// the sample seats its 10 satellites on exactly the nested ellipses a real 10-worktree repo gets
-    /// — no copied 115/180/242 to drift. `OrbitRingPlannerTests` pins that 10-worktree progression.
-    public static let rings: [RingSpec] = OrbitRingPlanner().rings(forWorktreeCount: worktrees.count)
 
     public static let worktrees: [WorktreeInput] = [
         WorktreeInput(branch: "hotfix/payment-retry", name: "api-hotfix", status: .dirty),
@@ -155,9 +151,9 @@ public enum SampleConstellationData {
         ConstellationLayout().buildHub(clusters: clusters, hub: hubInput)
     }
 
-    public static var orbits: ConstellationOrbits {
-        ConstellationLayout().buildOrbits(center: worktreeCenter, name: projectName,
-                                          worktrees: worktrees, rings: rings)
+    public static var orbits: SideOnOrbits {
+        SideOnOrbitPlanner().layout(center: worktreeCenter, name: projectName,
+                                    status: worktrees.first?.status, worktrees: worktrees)
     }
 
     public static var tree: ConstellationTree {

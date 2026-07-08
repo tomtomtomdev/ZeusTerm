@@ -3,8 +3,8 @@ import Foundation
 /// Pure orchestration use case for the worktree (orbit) level: reads a repo's real worktrees and
 /// each one's working-tree status through `GitReading`, mapping them to the `WorktreeInput`s the
 /// layout places as satellites. Mirrors `HubDataLoader` — I/O lives in the injected adapter, so
-/// this is unit-testable with a stub. The store turns the result into a laid-out `ConstellationOrbits`
-/// via `OrbitRingPlanner` + `ConstellationLayout.buildOrbits`.
+/// this is unit-testable with a stub. The store turns the result into a laid-out `SideOnOrbits`
+/// via `SideOnOrbitPlanner`.
 public struct WorktreeOrbitLoader: Sendable {
     /// Branch label for a worktree with no checked-out branch (detached HEAD).
     static let detachedLabel = "(detached)"

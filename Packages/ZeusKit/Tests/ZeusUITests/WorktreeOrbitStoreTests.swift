@@ -4,9 +4,9 @@ import ZeusDomain
 @testable import ZeusUI
 
 /// The UI-side store driving the worktree (orbit) level: it runs the pure `WorktreeOrbitLoader`
-/// (off-main) for a dived-into repo and publishes the laid-out `ConstellationOrbits` the view
-/// renders. Like `HubDataStore`, a new dive supersedes any in-flight load so the level always
-/// reflects the latest repo. Tested with stub `GitReading`s — no disk, no git CLI.
+/// (off-main) for a dived-into repo and publishes the laid-out `SideOnOrbits` the view renders.
+/// Like `HubDataStore`, a new dive supersedes any in-flight load so the level always reflects the
+/// latest repo. Tested with stub `GitReading`s — no disk, no git CLI.
 @MainActor
 struct WorktreeOrbitStoreTests {
 
@@ -91,10 +91,10 @@ struct WorktreeOrbitStoreTests {
         await s.waitForLoad()
 
         let orbits = try #require(s.orbits)
-        #expect(orbits.satellites.map(\.branch) == ["main", "hotfix"])
-        #expect(orbits.satellites.map(\.status) == [.clean, .dirty])
-        #expect(orbits.rings.count == 1)                       // two worktrees seat on the inner ring
-        #expect(orbits.center.point == StagePoint(x: 512, y: 256))
+        #expect(orbits.planets.map(\.branch) == ["main", "hotfix"])
+        #expect(orbits.planets.map(\.status) == [.clean, .dirty])
+        #expect(orbits.planets.count == 2)                     // one orbit per worktree
+        #expect(orbits.center.point == StagePoint(x: 512, y: 262))
         #expect(orbits.center.name == "api")                   // the dived-into repo, from its path
         #expect(orbits.center.status == .clean)                // mirrors the main worktree (/code/api)
     }
@@ -106,8 +106,7 @@ struct WorktreeOrbitStoreTests {
         await s.waitForLoad()
 
         let orbits = try #require(s.orbits)                    // published, not left nil
-        #expect(orbits.satellites.isEmpty)
-        #expect(orbits.rings.isEmpty)
+        #expect(orbits.planets.isEmpty)
     }
 
     @Test func startingANewLoadImmediatelyClearsThePreviousReposOrbits() async throws {
@@ -117,14 +116,14 @@ struct WorktreeOrbitStoreTests {
 
         s.load(repoPath: URL(fileURLWithPath: "/code/a"))
         await s.waitForLoad()
-        #expect(s.orbits?.satellites.map(\.branch) == ["a-main"])
+        #expect(s.orbits?.planets.map(\.branch) == ["a-main"])
 
         // Diving into b clears a's orbits synchronously — no stale-a flash while b loads.
         s.load(repoPath: URL(fileURLWithPath: "/code/b"))
         #expect(s.orbits == nil)
 
         await s.waitForLoad()
-        #expect(s.orbits?.satellites.map(\.branch) == ["b-main"])
+        #expect(s.orbits?.planets.map(\.branch) == ["b-main"])
     }
 
     @Test func anInFlightLoadIsSupersededByANewerDiveAndCannotClobberIt() async throws {
@@ -137,10 +136,10 @@ struct WorktreeOrbitStoreTests {
         s.load(repoPath: URL(fileURLWithPath: "/code/a"))   // suspends in readRepository on the gate
         s.load(repoPath: URL(fileURLWithPath: "/code/b"))   // supersedes a; b is ungated
         await s.waitForLoad()                               // awaits the latest (b)
-        #expect(s.orbits?.satellites.map(\.branch) == ["b-main"])
+        #expect(s.orbits?.planets.map(\.branch) == ["b-main"])
 
         await gate.open()                                   // let a's superseded load drain
         await Task.yield()
-        #expect(s.orbits?.satellites.map(\.branch) == ["b-main"])   // a did not clobber b
+        #expect(s.orbits?.planets.map(\.branch) == ["b-main"])   // a did not clobber b
     }
 }

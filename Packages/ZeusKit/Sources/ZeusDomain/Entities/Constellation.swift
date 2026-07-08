@@ -85,44 +85,6 @@ public struct ConstellationHub: Sendable, Hashable {
 
 // MARK: - Worktree orbit level
 
-/// A dashed elliptical orbit ring (the satellite track).
-public struct OrbitRing: Sendable, Hashable {
-    public var center: StagePoint
-    public var rx: Double
-    public var ry: Double
-    public init(center: StagePoint, rx: Double, ry: Double) {
-        self.center = center; self.rx = rx; self.ry = ry
-    }
-}
-
-/// A worktree satellite orbiting the repo star, with its branch label placed radially outward.
-public struct SatelliteNode: Identifiable, Sendable, Hashable {
-    public let id: String
-    public var branch: String
-    public var name: String
-    public var status: GitStatus
-    public var point: StagePoint
-    public var size: Double
-    public var labelPoint: StagePoint
-    public var labelOnRight: Bool
-
-    public init(id: String, branch: String, name: String, status: GitStatus,
-                point: StagePoint, size: Double, labelPoint: StagePoint, labelOnRight: Bool) {
-        self.id = id; self.branch = branch; self.name = name; self.status = status
-        self.point = point; self.size = size; self.labelPoint = labelPoint; self.labelOnRight = labelOnRight
-    }
-}
-
-/// One orbit ring's configuration: radius, how many satellites, and a starting angle offset.
-public struct RingSpec: Sendable, Hashable {
-    public var radius: Double
-    public var count: Int
-    public var angleOffset: Double
-    public init(radius: Double, count: Int, angleOffset: Double) {
-        self.radius = radius; self.count = count; self.angleOffset = angleOffset
-    }
-}
-
 public struct WorktreeInput: Sendable, Hashable {
     public var branch: String
     public var name: String
@@ -145,21 +107,96 @@ public struct OrbitCenter: Sendable, Hashable {
     }
 }
 
-/// The laid-out worktree level: the repo star's orbit rings + satellites.
-public struct ConstellationOrbits: Sendable, Hashable {
+// MARK: - Worktree orbit level (side-on solar system)
+
+/// Fixed geometry/motion constants for the side-on worktree system (Design/HANDOFF §"Worktrees").
+/// One orbit per worktree; ellipses flattened to `ry = rx·flatten`; the whole system tilted about
+/// the sun; planet speed falls off with radius (Kepler-ish); phases spread by the golden angle.
+public enum SideOnOrbit {
+    public static let flatten = 0.19            // ry = rx · 0.19 → near edge-on
+    public static let tiltDegrees = -13.0       // whole system rotated diagonally about the sun
+    public static let baseRadius = 145.0        // innermost orbit rx
+    public static let radiusStep = 52.0         // rx = baseRadius + i·radiusStep
+    public static let baseSpeed = 0.18          // angular speed at the innermost orbit
+    public static let speedExponent = 1.35      // speed = baseSpeed / (rx/baseRadius)^exponent
+    public static let goldenAngle = 2.3999      // starting-phase spread so planets don't clump
+    public static let basePlanetSize = 8.5      // planet disc size before the depth scale
+
+    public static var tiltRadians: Double { tiltDegrees * .pi / 180 }
+}
+
+/// One worktree planet: its orbit (`rx`, derived `ry`) plus the motion params that place it each
+/// frame. Static — the live position/size/z comes from `SideOnOrbits.state(of:at:)`.
+public struct OrbitPlanet: Identifiable, Sendable, Hashable {
+    public let id: String
+    public var branch: String
+    public var name: String
+    public var status: GitStatus
+    public var rx: Double
+    public var baseSize: Double
+    public var phase: Double      // θ₀ — starting angle
+    public var speed: Double      // radians per unit time
+
+    /// The flattened semi-minor axis — what makes the orbit read side-on.
+    public var ry: Double { rx * SideOnOrbit.flatten }
+
+    public init(id: String, branch: String, name: String, status: GitStatus,
+                rx: Double, baseSize: Double, phase: Double, speed: Double) {
+        self.id = id; self.branch = branch; self.name = name; self.status = status
+        self.rx = rx; self.baseSize = baseSize; self.phase = phase; self.speed = speed
+    }
+}
+
+/// A planet's evaluated frame: where it is, how big/bright, and its z-order relative to the sun
+/// (which sits at z 100 — planets with `zIndex < 100` render *behind* it).
+public struct PlanetState: Sendable, Hashable {
+    public var point: StagePoint
+    public var depth: Double       // 0 = far side (behind sun) … 1 = near side (in front)
+    public var size: Double
+    public var opacity: Double
+    public var zIndex: Int
+    public var labelOnRight: Bool
+    public init(point: StagePoint, depth: Double, size: Double, opacity: Double,
+                zIndex: Int, labelOnRight: Bool) {
+        self.point = point; self.depth = depth; self.size = size
+        self.opacity = opacity; self.zIndex = zIndex; self.labelOnRight = labelOnRight
+    }
+}
+
+/// The laid-out side-on worktree level: the repo sun, the tilt applied to the whole system, and its
+/// orbiting planets. `state(of:at:)` is the pure per-frame evaluator the view drives with a clock.
+public struct SideOnOrbits: Sendable, Hashable {
     public var center: OrbitCenter
-    public var rings: [OrbitRing]
-    public var satellites: [SatelliteNode]
-    public init(center: OrbitCenter, rings: [OrbitRing], satellites: [SatelliteNode]) {
-        self.center = center; self.rings = rings; self.satellites = satellites
+    public var tiltRadians: Double
+    public var planets: [OrbitPlanet]
+    public init(center: OrbitCenter, tiltRadians: Double, planets: [OrbitPlanet]) {
+        self.center = center; self.tiltRadians = tiltRadians; self.planets = planets
     }
 
-    /// Just the central repo star — no rings, no satellites. The neutral orbit shown while a repo
-    /// loads or when its read fails, so the "empty orbit" shape lives in one place. Carries the repo
-    /// name when known (the loading/error states still name the repo); status is unknown until loaded.
-    public static func empty(center: StagePoint, name: String = "") -> ConstellationOrbits {
-        ConstellationOrbits(center: OrbitCenter(point: center, name: name, status: nil),
-                            rings: [], satellites: [])
+    /// The neutral system shown while a repo loads or its read fails: just the sun, no planets.
+    public static func empty(center: StagePoint, name: String = "") -> SideOnOrbits {
+        SideOnOrbits(center: OrbitCenter(point: center, name: name, status: nil),
+                     tiltRadians: SideOnOrbit.tiltRadians, planets: [])
+    }
+
+    /// Evaluate `planet` at time `t`: orbit point (rotated by the system tilt), plus the depth-driven
+    /// size/opacity/z-order that make planets pass in front of and behind the sun. Pure — same `t`
+    /// yields the same frame, so it's unit-testable and reduce-motion just pins `t` to 0.
+    public func state(of planet: OrbitPlanet, at t: Double) -> PlanetState {
+        let theta = planet.phase + t * planet.speed
+        let dx = planet.rx * cos(theta)
+        let dy = planet.ry * sin(theta)
+        let ct = cos(tiltRadians), se = sin(tiltRadians)
+        let x = center.point.x + dx * ct - dy * se
+        let y = center.point.y + dx * se + dy * ct
+        let depth = (sin(theta) + 1) / 2
+        return PlanetState(
+            point: StagePoint(x: x, y: y),
+            depth: depth,
+            size: planet.baseSize * (0.66 + depth * 0.64),
+            opacity: 0.4 + depth * 0.6,
+            zIndex: Int((60 + depth * 90).rounded()),
+            labelOnRight: cos(theta) >= 0)
     }
 }
 

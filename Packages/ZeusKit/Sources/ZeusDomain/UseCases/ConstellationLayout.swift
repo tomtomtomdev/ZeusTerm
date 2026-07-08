@@ -51,41 +51,4 @@ public struct ConstellationLayout: Sendable {
         }
         return ConstellationHub(stars: stars, edges: edges, labels: labels)
     }
-
-    /// Worktree level: the repo star centered, worktrees distributed across elliptical
-    /// orbit rings (filled in order). `squash` flattens the rings (ry = rx·squash). The center
-    /// carries the repo `name` and a status mirroring its root — the main (first) worktree, the same
-    /// working tree the Hub colors that repo's star by; nil when the repo has no worktrees.
-    public func buildOrbits(center: StagePoint,
-                            name: String,
-                            worktrees: [WorktreeInput],
-                            rings: [RingSpec],
-                            squash: Double = 0.72) -> ConstellationOrbits {
-        var orbitRings: [OrbitRing] = []
-        var satellites: [SatelliteNode] = []
-        var next = 0
-
-        for ring in rings {
-            orbitRings.append(OrbitRing(center: center, rx: ring.radius, ry: ring.radius * squash))
-            for i in 0..<ring.count where next < worktrees.count {
-                let worktree = worktrees[next]
-                next += 1
-                let angle = ring.angleOffset + (Double(i) / Double(ring.count)) * 2 * .pi
-                let point = StagePoint(
-                    x: center.x + cos(angle) * ring.radius,
-                    y: center.y + sin(angle) * ring.radius * squash)
-                // Label sits 16pt radially outward along the (squashed) normal direction.
-                let nx = cos(angle), ny = sin(angle) * squash
-                let length = (nx * nx + ny * ny).squareRoot()
-                let unit = length == 0 ? 1 : length
-                let labelPoint = StagePoint(x: point.x + nx / unit * 16, y: point.y + ny / unit * 16)
-                satellites.append(SatelliteNode(
-                    id: worktree.name, branch: worktree.branch, name: worktree.name,
-                    status: worktree.status, point: point, size: 9.5,
-                    labelPoint: labelPoint, labelOnRight: nx >= 0))
-            }
-        }
-        let centerNode = OrbitCenter(point: center, name: name, status: worktrees.first?.status)
-        return ConstellationOrbits(center: centerNode, rings: orbitRings, satellites: satellites)
-    }
 }

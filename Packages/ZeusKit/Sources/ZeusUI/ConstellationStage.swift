@@ -214,87 +214,125 @@ struct HubLevelView: View {
     }
 }
 
-// MARK: - Level 2 — Worktrees: satellites on dashed elliptical orbit rings
+// MARK: - Level 2 — Worktrees: a side-on solar system (sun + orbiting planets)
 
+/// The worktree level as a tilted, edge-on solar system: the repo is a glowing sun, its worktrees
+/// are planets on one flattened orbit each, and depth drives each planet's size/opacity/z so they
+/// pass *in front of and behind* the sun as they orbit (Design/HANDOFF §"Worktrees"). The pure
+/// geometry lives in `SideOnOrbits.state(of:at:)`; this view just drives it with a clock and paints.
 struct OrbitLevelView: View {
-    let orbits: ConstellationOrbits
+    let orbits: SideOnOrbits
     let theme: Theme
     var focusedID: String? = nil
+    var reduceMotion: Bool = false
     var differentiateWithoutColor: Bool = false
     var increaseContrast: Bool = false
-    let onSelectWorktree: (SatelliteNode) -> Void
+    let onSelectWorktree: (OrbitPlanet, StagePoint) -> Void
 
     var body: some View {
+        // A monotonic clock advances the orbit; Reduce Motion pauses it and pins every planet to
+        // its t=0 frame (the frozen system the handoff specifies).
+        TimelineView(.animation(paused: reduceMotion)) { timeline in
+            system(at: reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate)
+        }
+        .frame(width: StageGeometry.width, height: StageGeometry.height)
+    }
+
+    private func system(at t: Double) -> some View {
         ZStack {
-            Canvas { ctx, _ in
-                for ring in orbits.rings {
-                    let rect = CGRect(x: ring.center.x - ring.rx, y: ring.center.y - ring.ry,
-                                      width: ring.rx * 2, height: ring.ry * 2)
-                    ctx.stroke(Path(ellipseIn: rect),
-                               with: .color(theme.textDim.opacity(increaseContrast ? 0.5 : 0.30)),
-                               style: StrokeStyle(lineWidth: 1, dash: [4, 5]))
-                }
-            }
-
-            StarDisc(color: centerColor, diameter: 17, ring: true)
-                .shadow(color: centerColor.opacity(0.6), radius: 22)
-                .position(x: orbits.center.point.x, y: orbits.center.point.y)
-                .accessibilityLabel(centerLabel(orbits.center))
-
-            if differentiateWithoutColor, let status = orbits.center.status {
-                StatusGlyphBadge(status: status, theme: theme)
-                    .position(x: orbits.center.point.x + 12, y: orbits.center.point.y - 12)
-            }
-
-            if !orbits.center.name.isEmpty {
-                Text(orbits.center.name)
-                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(theme.textHi)
-                    .fixedSize()
-                    .position(x: orbits.center.point.x, y: orbits.center.point.y + 28)
-                    .accessibilityHidden(true)
-            }
-
-            ForEach(Array(orbits.satellites.enumerated()), id: \.element.id) { index, sat in
-                StarDisc(color: theme.statusColor(sat.status), diameter: sat.size,
-                         focused: sat.id == focusedID)
-                    .frame(width: 30, height: 30)
-                    .contentShape(Rectangle())
-                    .position(x: sat.point.x, y: sat.point.y)
-                    .onTapGesture { onSelectWorktree(sat) }
-                    .accessibilityLabel(satelliteLabel(sat))
-                    .accessibilityIdentifier("worktree.\(sat.branch)")
-                    .accessibilityAddTraits(.isButton)
-                    .accessibilitySortPriority(Double(orbits.satellites.count - index))
-
-                if differentiateWithoutColor {
-                    StatusGlyphBadge(status: sat.status, theme: theme)
-                        .position(x: sat.point.x + 8, y: sat.point.y - 8)
-                }
-
-                Text(sat.branch)
-                    .font(.system(size: 9, design: .monospaced))
-                    .foregroundStyle(theme.textMid)
-                    .fixedSize()
-                    .frame(width: 120, alignment: sat.labelOnRight ? .leading : .trailing)
-                    .position(x: sat.labelPoint.x + (sat.labelOnRight ? 60 : -60),
-                              y: sat.labelPoint.y)
-                    .accessibilityHidden(true)
+            orbitRings                 // z 0 — behind everything
+            sun.zIndex(100)            // far-side planets (z < 100) duck behind it
+            ForEach(Array(orbits.planets.enumerated()), id: \.element.id) { index, planet in
+                planetView(planet, index: index, at: t)
             }
         }
         .frame(width: StageGeometry.width, height: StageGeometry.height)
     }
 
-    /// The repo star's color mirrors its root status (the main worktree), defaulting to clean when
-    /// the repo is still loading or has no worktrees — continuous with the status-colored star the
-    /// user clicked at the Hub. The white ring + size + glow keep it distinct from the satellites.
+    /// The thin solid orbit ellipses, flattened and rotated as one system by the diagonal tilt.
+    private var orbitRings: some View {
+        Canvas { ctx, _ in
+            let c = orbits.center.point
+            ctx.translateBy(x: c.x, y: c.y)               // rotate the whole system about the sun
+            ctx.rotate(by: .radians(orbits.tiltRadians))
+            ctx.translateBy(x: -c.x, y: -c.y)
+            for planet in orbits.planets {
+                let rect = CGRect(x: c.x - planet.rx, y: c.y - planet.ry,
+                                  width: planet.rx * 2, height: planet.ry * 2)
+                ctx.stroke(Path(ellipseIn: rect),
+                           with: .color(theme.textDim.opacity(increaseContrast ? 0.36 : 0.18)),
+                           lineWidth: 1)
+            }
+        }
+    }
+
+    private var sun: some View {
+        let c = orbits.center.point
+        return ZStack {
+            StarDisc(color: centerColor, diameter: 19, ring: true)
+                .shadow(color: centerColor.opacity(0.6), radius: 22)
+                .position(x: c.x, y: c.y)
+                .accessibilityLabel(centerLabel(orbits.center))
+
+            if differentiateWithoutColor, let status = orbits.center.status {
+                StatusGlyphBadge(status: status, theme: theme)
+                    .position(x: c.x + 12, y: c.y - 12)
+            }
+
+            if !orbits.center.name.isEmpty {
+                Text("\(orbits.center.name) · main")
+                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(theme.gold)
+                    .fixedSize()
+                    .position(x: c.x, y: c.y + 28)
+                    .accessibilityHidden(true)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func planetView(_ planet: OrbitPlanet, index: Int, at t: Double) -> some View {
+        let s = orbits.state(of: planet, at: t)
+        ZStack {
+            StarDisc(color: theme.statusColor(planet.status), diameter: s.size,
+                     focused: planet.id == focusedID)
+                .frame(width: 34, height: 34)
+                .contentShape(Rectangle())
+                .position(x: s.point.x, y: s.point.y)
+                .onTapGesture { onSelectWorktree(planet, s.point) }
+                .accessibilityLabel(planetLabel(planet))
+                .accessibilityIdentifier("worktree.\(planet.branch)")
+                .accessibilityAddTraits(.isButton)
+                .accessibilitySortPriority(Double(orbits.planets.count - index))
+
+            if differentiateWithoutColor {
+                StatusGlyphBadge(status: planet.status, theme: theme)
+                    .position(x: s.point.x + 8, y: s.point.y - 8)
+            }
+
+            Text(planet.branch)
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundStyle(theme.textMid)
+                .fixedSize()
+                .frame(width: 120, alignment: s.labelOnRight ? .leading : .trailing)
+                .position(x: s.point.x + (s.labelOnRight ? 73 : -73), y: s.point.y)
+                .opacity(min(1, s.depth * 0.9 + 0.06))
+                .accessibilityHidden(true)
+        }
+        .opacity(s.opacity)
+        .zIndex(Double(s.zIndex))
+    }
+
+    /// The sun mirrors its root status (main worktree), defaulting to clean while the repo loads —
+    /// continuous with the status-colored star clicked at the Hub. The white ring + size + glow keep
+    /// it distinct from the planets.
     private var centerColor: Color {
         theme.statusColor(orbits.center.status ?? .clean)
     }
 
     /// Plain `String` (not a `LocalizedStringKey`) so the `GitStatus` reads as its case name.
-    private func satelliteLabel(_ sat: SatelliteNode) -> String {
-        "\(sat.name), \(sat.branch), \(sat.status)"
+    private func planetLabel(_ planet: OrbitPlanet) -> String {
+        "\(planet.name), \(planet.branch), \(planet.status)"
     }
 
     /// Names the central repo star and reports its status; falls back to "repository" before the
