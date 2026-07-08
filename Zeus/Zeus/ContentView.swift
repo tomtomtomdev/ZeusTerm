@@ -36,9 +36,15 @@ struct ContentView: View {
             TerminalPane(cwd: cwd, suggestion: suggestion, theme: Theme(mode: settings.theme))
         }
         .frame(minWidth: 1100, minHeight: 720)
-        .onChange(of: settings.scanRoots) { _, _ in
+        .onChange(of: settings.scanRoots) { oldRoots, newRoots in
+            // A newly-added protected folder (under ~/Documents etc.) re-arms a dismissed FDA nudge
+            // so it can't silently fail to live-refresh.
+            for added in Set(newRoots).subtracting(oldRoots) {
+                hubData.noteRootAdded(URL(fileURLWithPath: added, isDirectory: true))
+            }
             let roots = AppComposition.effectiveRoots(for: settings)
-            Task { await hubData.reload(roots: roots) }
+            let protectedRoots = AppComposition.protectedRootsWhenAccessGranted(for: settings)
+            Task { await hubData.reload(roots: roots, protectedRootsWhenAccessGranted: protectedRoots) }
         }
     }
 }

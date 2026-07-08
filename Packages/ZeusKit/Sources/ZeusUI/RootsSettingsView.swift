@@ -17,7 +17,7 @@ public struct RootsSettingsView: View {
         Form {
             Section {
                 if store.scanRoots.isEmpty {
-                    Label("Scanning the built-in developer folders (Developer, Projects, Code, Desktop, …).",
+                    Label("Scanning the built-in developer folders (Developer, Projects, Code, src, …). Grant Full Disk Access to also include Documents and Desktop.",
                           systemImage: "sparkles")
                         .foregroundStyle(.secondary)
                 } else {

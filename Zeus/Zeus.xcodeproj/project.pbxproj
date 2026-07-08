@@ -431,6 +431,9 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSDesktopFolderUsageDescription = "Zeus scans this folder to find your git projects and show them in the navigator.";
+				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "Zeus scans this folder to find your git projects and show them in the navigator.";
+				INFOPLIST_KEY_NSDownloadsFolderUsageDescription = "Zeus scans this folder to find your git projects and show them in the navigator.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -463,6 +466,9 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSDesktopFolderUsageDescription = "Zeus scans this folder to find your git projects and show them in the navigator.";
+				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "Zeus scans this folder to find your git projects and show them in the navigator.";
+				INFOPLIST_KEY_NSDownloadsFolderUsageDescription = "Zeus scans this folder to find your git projects and show them in the navigator.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

@@ -15,10 +15,20 @@ public enum FullDiskAccessHint {
     /// the default scan roots most likely to hold repos (cf. `ProjectScanner.defaultDevRoots`).
     public static let protectedFolderNames: Set<String> = ["Desktop", "Documents", "Downloads"]
 
-    /// Whether live refresh needs Full Disk Access that the app doesn't have: only when access is
-    /// absent and a watched root lives in (or under) a protected folder.
-    public static func isNeeded(hasAccess: Bool, roots: [URL], home: URL) -> Bool {
+    /// Whether to nudge the user toward Full Disk Access. Only when access is absent AND either:
+    ///  - a watched root lives in (or under) a protected folder (FSEvents live-refresh silently
+    ///    never fires there without FDA), or
+    ///  - `excludedProtectedFolders` is non-empty — a protected folder exists on disk but was left
+    ///    out of the scan roots because we lack access (the defaults exclude them without FDA, so
+    ///    the user would otherwise never learn those repos could be shown).
+    public static func isNeeded(
+        hasAccess: Bool,
+        roots: [URL],
+        home: URL,
+        excludedProtectedFolders: Set<String> = []
+    ) -> Bool {
         guard !hasAccess else { return false }
+        if !excludedProtectedFolders.isEmpty { return true }
         let protectedRoots = protectedFolderNames.map { home.appendingPathComponent($0) }
         return roots.contains { root in
             protectedRoots.contains { isPath(root, atOrUnder: $0) }
@@ -28,7 +38,13 @@ public enum FullDiskAccessHint {
     /// `path` is the directory `ancestor` itself or a descendant of it. The trailing separator on
     /// the prefix check stops `~/Documentsbackup` from matching `~/Documents` (same sibling-prefix
     /// guard as the incremental rescan planner, P3-D.3d).
-    private static func isPath(_ path: URL, atOrUnder ancestor: URL) -> Bool {
+    public static func isPath(_ path: URL, atOrUnder ancestor: URL) -> Bool {
         path.path == ancestor.path || path.path.hasPrefix(ancestor.path + "/")
+    }
+
+    /// Whether `path` is at or under any TCC-protected user folder in `home` — used by the roots UI
+    /// to spot when a user picks a folder whose scan/live-refresh will need Full Disk Access.
+    public static func isProtected(_ path: URL, home: URL) -> Bool {
+        protectedFolderNames.contains { isPath(path, atOrUnder: home.appendingPathComponent($0)) }
     }
 }

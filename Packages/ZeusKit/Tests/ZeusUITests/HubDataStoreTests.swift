@@ -369,6 +369,123 @@ struct HubDataStoreTests {
         #expect(store.liveRefreshNeedsFullDiskAccess == false)
     }
 
+    // MARK: - Widen to protected folders once Full Disk Access is granted
+
+    @Test func loadWidensToProtectedRootsWhenAccessIsGranted() async {
+        // On defaults with FDA granted, the store scans ~/Documents too (no per-folder prompt fires
+        // with FDA). The scanner only finds `notes` under ~/Documents, so its presence proves the
+        // rescan happened over the widened roots.
+        let developer = home.appendingPathComponent("Developer")
+        let documents = home.appendingPathComponent("Documents")
+        let notes = documents.appendingPathComponent("notes")
+        let scanner = RootsAwareScanner(reposByRoot: [documents.path: [notes]],
+                                        entries: [notes.path: ["package.json"]])
+        let store = HubDataStore(
+            loader: HubDataLoader(scanner: scanner, git: StubGit(statuses: [notes.path: .clean])),
+            roots: [developer],
+            fullDiskAccess: StubFDA(granted: true),
+            home: home,
+            protectedRootsWhenAccessGranted: [documents])
+
+        await store.load()
+
+        #expect(store.hub?.stars.contains { $0.name == "notes" && !$0.isHub } == true)
+        #expect(store.liveRefreshNeedsFullDiskAccess == false)
+    }
+
+    @Test func loadDoesNotWidenToProtectedRootsWhenAccessIsMissing() async {
+        // Without FDA, ~/Documents stays out of the scan — touching it would pop a TCC dialog.
+        let developer = home.appendingPathComponent("Developer")
+        let documents = home.appendingPathComponent("Documents")
+        let notes = documents.appendingPathComponent("notes")
+        let scanner = RootsAwareScanner(reposByRoot: [documents.path: [notes]],
+                                        entries: [notes.path: ["package.json"]])
+        let store = HubDataStore(
+            loader: HubDataLoader(scanner: scanner, git: StubGit()),
+            roots: [developer],
+            fullDiskAccess: StubFDA(granted: false),
+            home: home,
+            protectedRootsWhenAccessGranted: [documents])
+
+        await store.load()
+
+        #expect(store.hub?.stars.contains { $0.name == "notes" } != true)
+    }
+
+    @Test func reloadWithConfiguredRootsStopsWideningToProtectedFoldersOnAccessGrant() async {
+        // Launch on defaults (protected set populated), then the user configures their own roots and
+        // clears the protected set. A later FDA grant must NOT fold ~/Documents back in — their
+        // explicit choice is authoritative.
+        let documents = home.appendingPathComponent("Documents")
+        let notes = documents.appendingPathComponent("notes")
+        let code = home.appendingPathComponent("code")
+        let scanner = RootsAwareScanner(reposByRoot: [documents.path: [notes], code.path: []],
+                                        entries: [notes.path: ["package.json"]])
+        let store = HubDataStore(
+            loader: HubDataLoader(scanner: scanner, git: StubGit()),
+            roots: [home.appendingPathComponent("Developer")],
+            fullDiskAccess: StubFDA(granted: true),
+            home: home,
+            protectedRootsWhenAccessGranted: [documents])
+
+        // User switches to a configured root and no longer wants auto-widening.
+        await store.reload(roots: [code], protectedRootsWhenAccessGranted: [])
+
+        #expect(store.hub?.stars.contains { $0.name == "notes" } != true)
+    }
+
+    @Test func loadNudgesWhenAProtectedFolderIsExcludedAndAccessMissing() async {
+        // No watched root is protected (only ~/Developer), but ~/Documents exists and was excluded
+        // for lack of access — so the store still nudges the user toward Full Disk Access.
+        let developer = home.appendingPathComponent("Developer")
+        let documents = home.appendingPathComponent("Documents")
+        let store = HubDataStore(
+            loader: HubDataLoader(scanner: StubScanner(repos: [], entries: [:]), git: StubGit()),
+            roots: [developer],
+            fullDiskAccess: StubFDA(granted: false),
+            home: home,
+            protectedRootsWhenAccessGranted: [documents])
+
+        await store.load()
+
+        #expect(store.liveRefreshNeedsFullDiskAccess == true)
+    }
+
+    @Test func addingAProtectedFolderReArmsADismissedFDAHint() async {
+        // The user dismissed the banner, then deliberately adds a folder under ~/Documents. That's a
+        // clear signal they want it scanned, so the FDA nudge must return rather than stay silenced.
+        let documents = home.appendingPathComponent("Documents")
+        let store = HubDataStore(
+            loader: HubDataLoader(scanner: StubScanner(repos: [], entries: [:]), git: StubGit()),
+            roots: [home.appendingPathComponent("Developer")],
+            fullDiskAccess: StubFDA(granted: false),
+            home: home)
+        await store.load()
+        store.dismissFullDiskAccessHint()
+        #expect(store.liveRefreshNeedsFullDiskAccess == false)
+
+        store.noteRootAdded(documents.appendingPathComponent("Work"))     // deliberate protected add
+        await store.reload(roots: [home.appendingPathComponent("Developer"),
+                                   documents.appendingPathComponent("Work")])
+
+        #expect(store.liveRefreshNeedsFullDiskAccess == true)
+    }
+
+    @Test func addingANonProtectedFolderDoesNotReArmADismissedFDAHint() async {
+        let store = HubDataStore(
+            loader: HubDataLoader(scanner: StubScanner(repos: [], entries: [:]), git: StubGit()),
+            roots: [home.appendingPathComponent("Documents")],
+            fullDiskAccess: StubFDA(granted: false),
+            home: home)
+        await store.load()
+        store.dismissFullDiskAccessHint()
+
+        store.noteRootAdded(home.appendingPathComponent("code"))          // non-protected → no re-arm
+        await store.reload(roots: [home.appendingPathComponent("code")])
+
+        #expect(store.liveRefreshNeedsFullDiskAccess == false)
+    }
+
     @Test func startWatchingReconcilesWhenTheWatcherReportsARelevantChange() async {
         let web = URL(fileURLWithPath: "/w/web")
         let scanner = CountingScanner(repos: [web], entries: ["/w/web": ["package.json"]])

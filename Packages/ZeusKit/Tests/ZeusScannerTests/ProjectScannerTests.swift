@@ -105,16 +105,41 @@ struct ProjectScannerTests {
         #expect(!roots.contains { $0.lastPathComponent == "Projects" })
     }
 
-    @Test func defaultDevRootsIncludesDesktopWhenItExists() throws {
+    @Test func defaultDevRootsExcludesProtectedFoldersWithoutFullDiskAccess() throws {
         let fm = FileManager.default
         let home = fm.temporaryDirectory.appendingPathComponent("zeus-home-\(UUID().uuidString)")
         defer { try? fm.removeItem(at: home) }
-        // ~/Desktop is a common dev root (the user keeps repos there), so it must be scanned.
-        try fm.createDirectory(at: home.appendingPathComponent("Desktop"),
-                               withIntermediateDirectories: true)
+        // Both a plain dev folder and the TCC-protected ones exist under this home.
+        for name in ["Developer", "Desktop", "Documents", "Downloads"] {
+            try fm.createDirectory(at: home.appendingPathComponent(name),
+                                   withIntermediateDirectories: true)
+        }
 
+        // Default (no Full Disk Access): touching Desktop/Documents/Downloads pops a per-folder TCC
+        // dialog, so they must be left out. Only non-protected dev folders are scanned on first run.
         let roots = ProjectScanner.defaultDevRoots(home: home, fileManager: fm)
 
+        #expect(roots.map(\.lastPathComponent) == ["Developer"])
+        #expect(!roots.contains { $0.lastPathComponent == "Desktop" })
+        #expect(!roots.contains { $0.lastPathComponent == "Documents" })
+        #expect(!roots.contains { $0.lastPathComponent == "Downloads" })
+    }
+
+    @Test func defaultDevRootsIncludesProtectedFoldersWhenFullDiskAccessGranted() throws {
+        let fm = FileManager.default
+        let home = fm.temporaryDirectory.appendingPathComponent("zeus-home-\(UUID().uuidString)")
+        defer { try? fm.removeItem(at: home) }
+        for name in ["Developer", "Desktop", "Documents"] {
+            try fm.createDirectory(at: home.appendingPathComponent(name),
+                                   withIntermediateDirectories: true)
+        }
+
+        // With Full Disk Access there are no per-folder prompts, so the protected folders (which
+        // commonly hold repos) are scanned too.
+        let roots = ProjectScanner.defaultDevRoots(home: home, fileManager: fm, includeProtected: true)
+
+        #expect(roots.contains { $0.lastPathComponent == "Developer" })
         #expect(roots.contains { $0.lastPathComponent == "Desktop" })
+        #expect(roots.contains { $0.lastPathComponent == "Documents" })
     }
 }

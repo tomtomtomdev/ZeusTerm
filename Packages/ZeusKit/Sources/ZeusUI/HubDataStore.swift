@@ -35,6 +35,12 @@ public final class HubDataStore {
     @ObservationIgnored private let debounce: Duration
     @ObservationIgnored private let fullDiskAccess: (any FullDiskAccessChecking)?
     @ObservationIgnored private let home: URL
+    /// TCC-protected default roots (e.g. `~/Documents`) that exist on disk but are excluded from the
+    /// initial scan because touching them without Full Disk Access pops a per-folder prompt. Once FDA
+    /// is granted they're folded into the roots and scanned (P-fda, widen-on-grant). Empty when the
+    /// user configured their own roots — their explicit choice is authoritative.
+    @ObservationIgnored private var protectedRootsWhenAccessGranted: [URL]
+    @ObservationIgnored private var didWidenToProtectedRoots = false
     @ObservationIgnored private var fdaHintDismissed = false
     @ObservationIgnored private var watchTask: Task<Void, Never>?
     @ObservationIgnored private var refreshTask: Task<Void, Never>?
@@ -50,7 +56,8 @@ public final class HubDataStore {
                 clock: any Clock<Duration> = ContinuousClock(),
                 debounce: Duration = .milliseconds(300),
                 fullDiskAccess: (any FullDiskAccessChecking)? = nil,
-                home: URL = FileManager.default.homeDirectoryForCurrentUser) {
+                home: URL = FileManager.default.homeDirectoryForCurrentUser,
+                protectedRootsWhenAccessGranted: [URL] = []) {
         self.loader = loader
         self.roots = roots
         self.layout = layout
@@ -60,6 +67,7 @@ public final class HubDataStore {
         self.debounce = debounce
         self.fullDiskAccess = fullDiskAccess
         self.home = home
+        self.protectedRootsWhenAccessGranted = protectedRootsWhenAccessGranted
     }
 
     /// Fixture seam (slice 7(b)): a store pre-seeded with an already-laid-out hub and no loader, so
@@ -75,6 +83,7 @@ public final class HubDataStore {
         self.debounce = .milliseconds(300)
         self.fullDiskAccess = nil
         self.home = FileManager.default.homeDirectoryForCurrentUser
+        self.protectedRootsWhenAccessGranted = []
         self.hub = fixtureHub
     }
 
@@ -107,7 +116,13 @@ public final class HubDataStore {
     /// is already on screen), reconciles, and re-points the live-refresh watcher at the new roots.
     /// A failed rescan keeps the current hub: a transient scan error must not blank an already-
     /// painted constellation.
-    public func reload(roots: [URL]) async {
+    public func reload(roots: [URL], protectedRootsWhenAccessGranted: [URL]? = nil) async {
+        if let protectedRootsWhenAccessGranted {
+            // The user edited their roots (Settings): re-decide which protected folders may be folded
+            // in on an FDA grant. Configured roots pass `[]`, so widening honors their explicit list.
+            self.protectedRootsWhenAccessGranted = protectedRootsWhenAccessGranted
+            didWidenToProtectedRoots = false
+        }
         startWatching(roots: roots)
         await refresh()
         await updateFullDiskAccessHint(roots: roots)
@@ -120,8 +135,35 @@ public final class HubDataStore {
     private func updateFullDiskAccessHint(roots: [URL]) async {
         guard !fdaHintDismissed, let fullDiskAccess else { return }
         let hasAccess = await Task.detached { fullDiskAccess.hasFullDiskAccess() }.value
+        if hasAccess, await widenToProtectedRootsIfNeeded() {
+            // Widening triggered a reload that re-ran this method against the widened roots, which
+            // set the flag; don't recompute here against the pre-widen roots.
+            return
+        }
+        let excluded = excludedProtectedFolderNames(currentRoots: roots)
         liveRefreshNeedsFullDiskAccess = FullDiskAccessHint.isNeeded(
-            hasAccess: hasAccess, roots: roots, home: home)
+            hasAccess: hasAccess, roots: roots, home: home, excludedProtectedFolders: excluded)
+    }
+
+    /// Once Full Disk Access is granted, fold the previously-excluded protected default roots (e.g.
+    /// `~/Documents`) into the scan and reload — a single-shot widening so those repos appear without
+    /// a relaunch. Returns true when it kicked off a reload (so the caller stops). No-op when there's
+    /// nothing to add or it already widened.
+    private func widenToProtectedRootsIfNeeded() async -> Bool {
+        guard !didWidenToProtectedRoots else { return false }
+        let missing = protectedRootsWhenAccessGranted.filter { !roots.contains($0) }
+        didWidenToProtectedRoots = true
+        guard !missing.isEmpty else { return false }
+        await reload(roots: roots + missing)
+        return true
+    }
+
+    /// The protected default roots that exist on disk but aren't (yet) scanned — drives the FDA nudge
+    /// so a user who has `~/Documents`/`~/Desktop` repos learns they can grant access to see them.
+    private func excludedProtectedFolderNames(currentRoots: [URL]) -> Set<String> {
+        Set(protectedRootsWhenAccessGranted
+            .filter { !currentRoots.contains($0) }
+            .map(\.lastPathComponent))
     }
 
     /// Re-probe Full Disk Access and recompute the hint — call when the app returns to the foreground,
@@ -130,6 +172,14 @@ public final class HubDataStore {
     /// stick and leave the banner up; this re-reads access against the roots last watched.
     public func recheckFullDiskAccessHint() async {
         await updateFullDiskAccessHint(roots: roots)
+    }
+
+    /// Note that the user just added `url` to their scan roots. Adding a TCC-protected folder (under
+    /// `~/Documents`/`~/Desktop`/`~/Downloads`) is a deliberate request to scan it, so it re-arms a
+    /// previously-dismissed FDA nudge — otherwise the ensuing reload would silence it and the folder
+    /// would never live-refresh. The reload that follows the roots edit does the actual re-check.
+    public func noteRootAdded(_ url: URL) {
+        if FullDiskAccessHint.isProtected(url, home: home) { fdaHintDismissed = false }
     }
 
     /// Hide the Full Disk Access hint for the rest of the session. It reappears on the next launch if

@@ -25,14 +25,27 @@ public struct ProjectScanner: ProjectScanning {
         Set(try FileManager.default.contentsOfDirectory(atPath: repo.path))
     }
 
+    /// The non-protected SPEC §2.1 dev roots — always safe to scan, as touching them triggers no
+    /// TCC consent dialog. The TCC-protected roots (Desktop/Documents/Downloads, cf.
+    /// `FullDiskAccessHint.protectedFolderNames`) are added only with `includeProtected`.
+    static let unprotectedDevRootNames = ["Developer", "Projects", "Code", "src", "work", "git"]
+
     /// SPEC §2.1 default discovery roots under `home`, keeping only the ones that exist as
     /// directories (so the walk never errors on a missing folder). `home`/`fileManager` are
     /// injected for testability; the app calls it with the real home.
+    ///
+    /// TCC-protected folders (Desktop/Documents/Downloads) are excluded by default: touching them
+    /// without Full Disk Access pops a *separate* per-folder consent dialog, so a first scan over
+    /// the defaults would fire several. They are included only when `includeProtected` is true —
+    /// i.e. once Full Disk Access is granted, which makes every folder scannable with no prompts.
     public static func defaultDevRoots(
         home: URL = FileManager.default.homeDirectoryForCurrentUser,
-        fileManager: FileManager = .default
+        fileManager: FileManager = .default,
+        includeProtected: Bool = false
     ) -> [URL] {
-        let names = ["Developer", "Projects", "Code", "src", "work", "git", "Documents", "Desktop"]
+        let names = includeProtected
+            ? unprotectedDevRootNames + FullDiskAccessHint.protectedFolderNames.sorted()
+            : unprotectedDevRootNames
         return names.compactMap { name in
             let url = home.appendingPathComponent(name, isDirectory: true)
             var isDir: ObjCBool = false

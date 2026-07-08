@@ -46,7 +46,8 @@ enum AppComposition {
             roots: effectiveRoots(for: settings),
             watcher: FSEventsWatcher(),
             relevance: ChangeRelevance(prunedDirectoryNames: ProjectScanner.defaultPruned),
-            fullDiskAccess: FullDiskAccessProbe())
+            fullDiskAccess: FullDiskAccessProbe(),
+            protectedRootsWhenAccessGranted: protectedRootsWhenAccessGranted(for: settings))
     }
 
     /// The worktree (orbit) data store: loads a dived-into repo's real worktrees through the same
@@ -85,11 +86,24 @@ enum AppComposition {
     }
 
     /// The roots the scanner should walk: the user's configured roots when set, else the built-in
-    /// dev roots — resolved in one place so the initial scan and every re-scan agree.
+    /// dev roots — resolved in one place so the initial scan and every re-scan agree. The defaults
+    /// exclude TCC-protected folders (Desktop/Documents/Downloads) so a first scan pops no per-folder
+    /// permission dialogs; they're folded in later only if the user grants Full Disk Access.
     @MainActor
     static func effectiveRoots(for settings: SettingsStore) -> [URL] {
         ScanRootResolver.effectiveRoots(configured: settings.scanRoots,
                                         defaults: ProjectScanner.defaultDevRoots())
+    }
+
+    /// The TCC-protected default roots that exist on disk but are held out of the initial scan — the
+    /// store folds them in once Full Disk Access is granted (widen-on-grant). Empty when the user
+    /// configured their own roots: their explicit list is authoritative, so nothing is auto-added.
+    @MainActor
+    static func protectedRootsWhenAccessGranted(for settings: SettingsStore) -> [URL] {
+        guard settings.scanRoots.isEmpty else { return [] }
+        let withProtected = Set(ProjectScanner.defaultDevRoots(includeProtected: true))
+        let withoutProtected = Set(ProjectScanner.defaultDevRoots())
+        return Array(withProtected.subtracting(withoutProtected))
     }
 
     // MARK: - Storage locations

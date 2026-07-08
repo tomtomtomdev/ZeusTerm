@@ -67,4 +67,39 @@ struct FullDiskAccessHintTests {
 
         #expect(needed == false)
     }
+
+    // A protected folder exists on disk but was left OUT of the scan roots because we lack access
+    // (defaults exclude Desktop/Documents/Downloads without FDA). The user would never learn they
+    // could see those repos — so nudge them, even though no watched root is protected.
+    @Test func aPresentButExcludedProtectedFolderNeedsTheHint() {
+        let needed = FullDiskAccessHint.isNeeded(
+            hasAccess: false,
+            roots: [home.appendingPathComponent("Developer")],
+            home: home,
+            excludedProtectedFolders: ["Documents"])
+
+        #expect(needed == true)
+    }
+
+    @Test func aPresentButExcludedProtectedFolderWithAccessDoesNotNeedTheHint() {
+        // With access, the widened defaults already include the folder — nothing to nudge for.
+        let needed = FullDiskAccessHint.isNeeded(
+            hasAccess: true,
+            roots: [home.appendingPathComponent("Developer")],
+            home: home,
+            excludedProtectedFolders: ["Documents"])
+
+        #expect(needed == false)
+    }
+
+    @Test func noExcludedFoldersAndOnlyNonProtectedRootsDoesNotNeedTheHint() {
+        // The new parameter defaults to empty and must not change the original behavior.
+        let needed = FullDiskAccessHint.isNeeded(
+            hasAccess: false,
+            roots: [home.appendingPathComponent("code")],
+            home: home,
+            excludedProtectedFolders: [])
+
+        #expect(needed == false)
+    }
 }
