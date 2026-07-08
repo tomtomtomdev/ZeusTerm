@@ -11,7 +11,6 @@
 
 import SwiftUI
 import ZeusUI
-import ZeusTerminal
 
 @main
 struct ZeusApp: App {
@@ -28,7 +27,6 @@ struct ZeusApp: App {
     @State private var treeData: CommitTreeStore
     @State private var diffData: CommitDiffStore
     @State private var suggestion: SuggestionStore
-    @State private var terminalSession: TerminalSession
 
     init() {
         let settingsStore = SettingsStore(store: AppComposition.makeSettingsStore())
@@ -38,7 +36,6 @@ struct ZeusApp: App {
         _treeData = State(initialValue: AppComposition.makeTreeStore())
         _diffData = State(initialValue: AppComposition.makeDiffStore())
         _suggestion = State(initialValue: AppComposition.makeSuggestionStore())
-        _terminalSession = State(initialValue: AppComposition.makeTerminalSession())
     }
 
     var body: some Scene {
@@ -49,7 +46,7 @@ struct ZeusApp: App {
             } else {
                 ContentView(hubData: hubData, orbitData: orbitData, treeData: treeData,
                             diffData: diffData, settings: settings,
-                            suggestion: suggestion, terminalSession: terminalSession)
+                            suggestion: suggestion)
             }
         }
         .defaultSize(width: 1320, height: 860)

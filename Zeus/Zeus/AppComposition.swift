@@ -16,7 +16,6 @@ import ZeusGit
 import ZeusIndex
 import ZeusSettingsStore
 import ZeusSuggest
-import ZeusTerminal
 
 enum AppComposition {
 
@@ -83,16 +82,6 @@ enum AppComposition {
     static func makeSuggestionStore() -> SuggestionStore {
         let history = ShellHistoryReader().history(at: ShellHistoryReader.defaultHistoryURL())
         return SuggestionStore(engine: SuggestionEngine(history: history))
-    }
-
-    /// The live terminal session the command line writes committed commands to (feature #6 / P6).
-    /// The same instance is handed to `TerminalEmulatorView` (which attaches the PTY view) and the
-    /// `SuggestionInputLine` (which calls `send`), so Enter in the line reaches the running shell.
-    @MainActor
-    static func makeTerminalSession(
-        workingDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
-    ) -> TerminalSession {
-        TerminalSession(workingDirectory: workingDirectory)
     }
 
     /// The roots the scanner should walk: the user's configured roots when set, else the built-in
