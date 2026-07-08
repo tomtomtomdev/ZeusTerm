@@ -393,11 +393,13 @@ struct ConstellationTopBar: View {
             breadcrumb
 
             if let detached = presenter.detachedLabel {
+                // SPEC: detached-HEAD pill is amber (#F5A623 = `.dirty`), not red — rgba(245,166,35,·).
                 Text(detached)
-                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                    .padding(.horizontal, 8).padding(.vertical, 3)
-                    .background(theme.statusColor(.behind).opacity(0.18), in: Capsule())
-                    .foregroundStyle(theme.statusColor(.behind))
+                    .font(.system(size: 11.5, weight: .medium, design: .monospaced))
+                    .padding(.horizontal, 9).padding(.vertical, 4)
+                    .background(theme.statusColor(.dirty).opacity(0.12), in: RoundedRectangle(cornerRadius: 7))
+                    .overlay(RoundedRectangle(cornerRadius: 7).stroke(theme.statusColor(.dirty).opacity(0.30), lineWidth: 1))
+                    .foregroundStyle(theme.statusColor(.dirty))
             }
 
             Spacer()

@@ -33,6 +33,20 @@ public enum Theme: String, Sendable, CaseIterable, Hashable {
     public var textDimHex: String       { self == .dark ? "#646C80" : "#9AA1AD" }
     public var goldHex: String          { self == .dark ? "#F5C451" : "#E0A21A" }
 
+    // MARK: - Constellation map palette (line + label hues from the layout algorithm, not the
+    // status scale). Dark values are the prototype's exact rgba literals; light values are muted
+    // to stay legible on the light frame. Opacities are applied at the call site (edges .15/.06,
+    // orbit rings .18, repo labels .62) — these tokens carry only the base hue.
+
+    /// Constellation / orbit lines — `rgba(150,170,255, α)` in the prototype.
+    public var constellationLineHex: String { self == .dark ? "#96AAFF" : "#7C8BB8" }
+    /// Cluster type labels above each group — `#CFD5E6`.
+    public var clusterLabelHex: String      { self == .dark ? "#CFD5E6" : "#4B5563" }
+    /// Repo name labels under each star — `rgba(180,190,215, .62)`.
+    public var repoLabelHex: String         { self == .dark ? "#B4BED7" : "#6B7280" }
+    /// Worktree/planet labels on the solar-system level — `#AEB6C8`.
+    public var orbitLabelHex: String        { self == .dark ? "#AEB6C8" : "#4B5563" }
+
     // MARK: - Git status — the only semantic color scale (drives node fill)
 
     public func statusHex(_ status: GitStatus) -> String {
@@ -95,6 +109,10 @@ public enum Theme: String, Sendable, CaseIterable, Hashable {
     public var textMid: Color       { Color(hex: textMidHex) }
     public var textDim: Color       { Color(hex: textDimHex) }
     public var gold: Color          { Color(hex: goldHex) }
+    public var constellationLine: Color { Color(hex: constellationLineHex) }
+    public var clusterLabel: Color  { Color(hex: clusterLabelHex) }
+    public var repoLabel: Color     { Color(hex: repoLabelHex) }
+    public var orbitLabel: Color    { Color(hex: orbitLabelHex) }
 
     public func statusColor(_ status: GitStatus) -> Color { Color(hex: statusHex(status)) }
     public static func laneColor(forBranch branch: String) -> Color { Color(hex: laneHex(forBranch: branch)) }

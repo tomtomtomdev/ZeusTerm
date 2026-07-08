@@ -48,7 +48,8 @@ struct StarDisc: View {
             .fill(color)
             .frame(width: diameter, height: diameter)
             // Glow ≈ SPEC `0 0 {size*2} {size*0.6} {color}66` — a soft halo the size of the star.
-            .shadow(color: color.opacity(0.55), radius: diameter, x: 0, y: 0)
+            // `{color}66` = 0x66/0xFF ≈ 0.40 alpha.
+            .shadow(color: color.opacity(0.40), radius: diameter, x: 0, y: 0)
             .overlay {
                 if ring {
                     Circle().stroke(.white, lineWidth: 1.5).frame(width: diameter, height: diameter)
@@ -70,7 +71,8 @@ struct CommitDot: View {
         Circle()
             .fill(color)
             .frame(width: d, height: d)
-            .shadow(color: color.opacity(0.5), radius: isHead ? 8 : 5)
+            // Node glow ≈ SPEC `{color}66` (≈0.40 alpha).
+            .shadow(color: color.opacity(0.40), radius: isHead ? 8 : 5)
             .overlay {
                 if isHead {
                     Circle().stroke(.white, lineWidth: 2).frame(width: d + 6, height: d + 6)
@@ -155,23 +157,26 @@ struct HubLevelView: View {
                     var path = Path()
                     path.move(to: CGPoint(x: edge.from.x, y: edge.from.y))
                     path.addLine(to: CGPoint(x: edge.to.x, y: edge.to.y))
-                    let base = edge.dim ? 0.10 : 0.20
+                    // SPEC: within-cluster lines rgba(150,170,255,.15), cluster→hub lines .06 (dimmer).
+                    let base = edge.dim ? 0.06 : 0.15
                     ctx.stroke(path,
-                               with: .color(theme.textDim.opacity(increaseContrast ? base * 2 : base)),
+                               with: .color(theme.constellationLine.opacity(increaseContrast ? base * 2 : base)),
                                lineWidth: 1)
                 }
             }
 
             ForEach(hub.labels, id: \.text) { label in
                 Text(label.text.uppercased())
-                    .font(.system(size: 10, weight: .semibold))
-                    .tracking(1.6)
-                    .foregroundStyle(theme.textDim)
+                    .font(.system(size: 12.5, weight: .semibold))   // SPEC 12.5px/600
+                    .tracking(1.6)                                    // .13em × 12.5 ≈ 1.6
+                    .foregroundStyle(theme.clusterLabel)
                     .position(x: label.point.x, y: label.point.y)
             }
 
             ForEach(Array(hub.stars.enumerated()), id: \.element.id) { index, star in
-                StarDisc(color: star.isHub ? theme.gold : theme.statusColor(star.status ?? .clean),
+                // SPEC: hub star is clean-green (#35D08B) like any clean repo — its 16px size + white
+                // ring make it distinct, not a unique hue. Hub `status` is nil ⇒ `.clean` ⇒ green.
+                StarDisc(color: theme.statusColor(star.status ?? .clean),
                          diameter: star.size,
                          ring: star.isHub,
                          focused: star.id == focusedID)
@@ -196,10 +201,10 @@ struct HubLevelView: View {
                 // a11y lives on the disc above, so the label is hidden to avoid a duplicate read.
                 if !star.isHub {
                     Text(star.name)
-                        .font(.system(size: 9, design: .monospaced))
-                        .foregroundStyle(theme.textDim)
+                        .font(.system(size: 9.5, design: .monospaced))   // SPEC 9.5px
+                        .foregroundStyle(theme.repoLabel.opacity(0.62))   // rgba(180,190,215,.62)
                         .fixedSize()
-                        .position(x: star.point.x, y: star.point.y + 11)
+                        .position(x: star.point.x, y: star.point.y + star.size / 2 + 11)
                         .allowsHitTesting(false)   // decorative — never steal a tap from a star
                         .accessibilityHidden(true)
                 }
@@ -260,7 +265,7 @@ struct OrbitLevelView: View {
                 let rect = CGRect(x: c.x - planet.rx, y: c.y - planet.ry,
                                   width: planet.rx * 2, height: planet.ry * 2)
                 ctx.stroke(Path(ellipseIn: rect),
-                           with: .color(theme.textDim.opacity(increaseContrast ? 0.36 : 0.18)),
+                           with: .color(theme.constellationLine.opacity(increaseContrast ? 0.36 : 0.18)),
                            lineWidth: 1)
             }
         }
@@ -312,7 +317,7 @@ struct OrbitLevelView: View {
 
             Text(planet.branch)
                 .font(.system(size: 10, design: .monospaced))
-                .foregroundStyle(theme.textMid)
+                .foregroundStyle(theme.orbitLabel)                // SPEC #AEB6C8
                 .fixedSize()
                 .frame(width: 120, alignment: s.labelOnRight ? .leading : .trailing)
                 .position(x: s.point.x + (s.labelOnRight ? 73 : -73), y: s.point.y)
@@ -366,9 +371,10 @@ struct TreeLevelView: View {
                     var path = Path()
                     path.move(to: CGPoint(x: edge.from.x, y: edge.from.y))
                     path.addLine(to: CGPoint(x: edge.to.x, y: edge.to.y))
+                    // SPEC: edges drawn in lane color at ~82% alpha (`{lane}d0`), 2.2px round caps.
                     ctx.stroke(path,
-                               with: .color(Theme.laneColor(forBranch: edge.branch).opacity(increaseContrast ? 0.85 : 0.55)),
-                               lineWidth: 2)
+                               with: .color(Theme.laneColor(forBranch: edge.branch).opacity(increaseContrast ? 0.95 : 0.82)),
+                               style: StrokeStyle(lineWidth: 2.2, lineCap: .round))
                 }
             }
 

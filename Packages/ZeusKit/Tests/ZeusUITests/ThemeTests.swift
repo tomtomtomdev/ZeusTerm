@@ -67,6 +67,27 @@ struct ThemeTests {
         #expect(Set(symbols).count == GitStatus.allCases.count)   // all distinct
     }
 
+    // The constellation map's line + label hues (Design/HANDOFF "Layout & motion algorithms":
+    // lines rgba(150,170,255,·), cluster labels #CFD5E6, repo labels rgba(180,190,215,·),
+    // planet labels #AEB6C8). Previously scattered as grey `textDim` literals in the view; promoted
+    // into the Theme token table (the canonical, testable form) so they match spec exactly.
+    @Test func constellationPaletteMatchesSpecDark() {
+        let t = Theme.dark
+        #expect(t.constellationLineHex == "#96AAFF")   // rgba(150,170,255)
+        #expect(t.clusterLabelHex == "#CFD5E6")
+        #expect(t.repoLabelHex == "#B4BED7")           // rgba(180,190,215), drawn at 62% opacity
+        #expect(t.orbitLabelHex == "#AEB6C8")
+    }
+
+    @Test func constellationPaletteIsDefinedInBothThemes() {
+        for theme in Theme.allCases {
+            #expect(theme.constellationLineHex.hasPrefix("#"))
+            #expect(theme.clusterLabelHex.hasPrefix("#"))
+            #expect(theme.repoLabelHex.hasPrefix("#"))
+            #expect(theme.orbitLabelHex.hasPrefix("#"))
+        }
+    }
+
     @Test func branchLanesAreColoredByName() {
         #expect(Theme.laneHex(forBranch: "main") == "#F5C451")        // Zeus gold
         #expect(Theme.laneHex(forBranch: "develop") == "#6E8BFF")
