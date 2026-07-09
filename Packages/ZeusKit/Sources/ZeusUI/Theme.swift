@@ -27,7 +27,11 @@ public enum Theme: String, Sendable, CaseIterable, Hashable {
     public var elevatedHex: String      { self == .dark ? "#0E1117" : "#F1F3F7" }
     public var controlHex: String       { self == .dark ? "#14171F" : "#F1F3F7" }
     public var accentSoftHex: String    { self == .dark ? "#2A3350" : "#E4E7EE" }
-    public var hairlineHex: String      { self == .dark ? "#FFFFFF" : "#E9EBF1" }
+    // Borders are translucent white over the dark surfaces (Design/HANDOFF "Color — dark theme"):
+    // hairline = rgba(255,255,255,0.06) = #FFFFFF0F, control = rgba(255,255,255,0.08) = #FFFFFF14.
+    // Light keeps the opaque frame-③ greys (a translucent-white line is invisible on a light surface).
+    public var hairlineHex: String      { self == .dark ? "#FFFFFF0F" : "#E9EBF1" }
+    public var controlBorderHex: String { self == .dark ? "#FFFFFF14" : "#E4E7EE" }
     public var textHiHex: String        { self == .dark ? "#E7EAF2" : "#1A1D24" }
     public var textMidHex: String       { self == .dark ? "#9AA3B8" : "#4B5563" }
     public var textDimHex: String       { self == .dark ? "#646C80" : "#9AA1AD" }
@@ -97,6 +101,30 @@ public enum Theme: String, Sendable, CaseIterable, Hashable {
         }
     }
 
+    // MARK: - Diff syntax palette (Design/HANDOFF "Color — diff / file status")
+
+    // Added / deleted lines get tinted text over a 10% status-hue background (0.10·255 ≈ 0x1A).
+    // Context, hunk headers, and file headers are the greys from the prototype's rendered diff.
+    // Light values reuse the light status scale so tints stay legible on the light frame.
+    public var diffAddTextHex: String    { self == .dark ? "#7BD4A8" : "#1FA971" }
+    public var diffAddBgHex: String      { self == .dark ? "#35D08B1A" : "#1FA9711A" }
+    public var diffDelTextHex: String    { self == .dark ? "#FF9D9D" : "#E0524F" }
+    public var diffDelBgHex: String      { self == .dark ? "#FF6B6B1A" : "#E0524F1A" }
+    public var diffContextHex: String    { self == .dark ? "#AEB6C8" : "#4B5563" }
+    public var diffHunkHex: String       { self == .dark ? "#646C80" : "#9AA1AD" }
+    public var diffFileHeaderHex: String { self == .dark ? "#7C8597" : "#6B7280" }
+
+    /// Foreground (and optional line-background) color for a classified diff line.
+    public func diffStyle(_ kind: DiffLineKind) -> (foreground: Color, background: Color?) {
+        switch kind {
+        case .fileHeader: return (Color(hex: diffFileHeaderHex), nil)
+        case .hunkHeader: return (Color(hex: diffHunkHex), nil)
+        case .context:    return (Color(hex: diffContextHex), nil)
+        case .addition:   return (Color(hex: diffAddTextHex), Color(hex: diffAddBgHex))
+        case .deletion:   return (Color(hex: diffDelTextHex), Color(hex: diffDelBgHex))
+        }
+    }
+
     // MARK: - Color accessors (thin passthrough over Color(hex:))
 
     public var appBackground: Color { Color(hex: appBackgroundHex) }
@@ -105,6 +133,8 @@ public enum Theme: String, Sendable, CaseIterable, Hashable {
     public var elevated: Color      { Color(hex: elevatedHex) }
     public var control: Color       { Color(hex: controlHex) }
     public var accentSoft: Color    { Color(hex: accentSoftHex) }
+    public var hairline: Color      { Color(hex: hairlineHex) }
+    public var controlBorder: Color { Color(hex: controlBorderHex) }
     public var textHi: Color        { Color(hex: textHiHex) }
     public var textMid: Color       { Color(hex: textMidHex) }
     public var textDim: Color       { Color(hex: textDimHex) }

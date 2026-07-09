@@ -17,12 +17,12 @@ struct ChangesPanelView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider().overlay(theme.accentSoft)
+            Divider().overlay(theme.hairline)
             GeometryReader { geo in
                 HStack(spacing: 0) {
                     changedFiles
                         .frame(width: geo.size.width * Self.filesColumnFraction, alignment: .leading)
-                    Divider().overlay(theme.accentSoft)
+                    Divider().overlay(theme.hairline)
                     diffPreview.frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
@@ -114,14 +114,35 @@ struct ChangesPanelView: View {
 
     private var diffPreview: some View {
         ScrollView {
-            Text(diff.patch.isEmpty ? "No changes." : diff.patch)
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(theme.textMid)
+            if diff.patch.isEmpty {
+                Text("No changes.")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(theme.textMid)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .accessibilityIdentifier("changes.diff")
+            } else {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(DiffSyntax.classify(diff.patch)) { diffLineRow($0) }
+                }
                 .textSelection(.enabled)
-                .accessibilityIdentifier("changes.diff")
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(12)
+                .padding(.vertical, 12)
+                .accessibilityIdentifier("changes.diff")
+            }
         }
+    }
+
+    /// One diff line: tinted text over a full-width status tint for `+`/`-`, plain otherwise.
+    private func diffLineRow(_ line: DiffLine) -> some View {
+        let style = theme.diffStyle(line.kind)
+        // A blank line still needs height, so render a single space when the text is empty.
+        return Text(line.text.isEmpty ? " " : line.text)
+            .font(.system(size: 11, design: .monospaced))
+            .foregroundStyle(style.foreground)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12)
+            .background(style.background ?? .clear)
     }
 
     private func statusLetter(_ status: FileStatus) -> String {

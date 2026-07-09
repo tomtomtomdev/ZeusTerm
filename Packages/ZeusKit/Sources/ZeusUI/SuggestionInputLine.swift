@@ -47,7 +47,7 @@ public struct SuggestionInputLine: View {
         .padding(.horizontal, 10)
         .frame(height: 30)
         .background(theme.control)
-        .overlay(theme.accentSoft.frame(height: 1), alignment: .top)   // hairline above the terminal
+        .overlay(theme.hairline.frame(height: 1), alignment: .top)   // hairline above the terminal
     }
 }
 

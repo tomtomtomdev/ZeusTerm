@@ -84,17 +84,17 @@ public struct ConstellationShell<TerminalContent: View>: View {
             ConstellationTopBar(presenter: presenter, theme: theme,
                                 onCrumb: { store.dispatch(.backTo($0)) },
                                 onToggleTheme: { toggleTheme() })
-            Divider().overlay(theme.accentSoft)
+            Divider().overlay(theme.hairline)
             if hubData?.liveRefreshNeedsFullDiskAccess == true {
                 FullDiskAccessBanner(theme: theme) { hubData?.dismissFullDiskAccessHint() }
-                Divider().overlay(theme.accentSoft)
+                Divider().overlay(theme.hairline)
             }
             HStack(spacing: 0) {
                 ConstellationRail(theme: theme)
-                Divider().overlay(theme.accentSoft)
+                Divider().overlay(theme.hairline)
                 canvas
             }
-            Divider().overlay(theme.accentSoft)
+            Divider().overlay(theme.hairline)
             bottomPanel
         }
         .background(theme.appBackground)
@@ -388,7 +388,7 @@ struct ConstellationTopBar: View {
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(theme.gold)
 
-            Rectangle().fill(theme.accentSoft).frame(width: 1, height: 18)
+            Rectangle().fill(theme.hairline).frame(width: 1, height: 18)
 
             breadcrumb
 
@@ -491,7 +491,7 @@ struct BackPill: View {
         .buttonStyle(.plain)
         .foregroundStyle(theme.textHi)
         .background(.ultraThinMaterial, in: Capsule())
-        .overlay(Capsule().stroke(theme.accentSoft, lineWidth: 1))
+        .overlay(Capsule().stroke(theme.controlBorder, lineWidth: 1))
         .accessibilityLabel("Back")
     }
 }
@@ -568,7 +568,7 @@ struct ScanningIndicator: View {
         }
         .padding(.horizontal, 18).padding(.vertical, 14)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(theme.accentSoft, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(theme.controlBorder, lineWidth: 1))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Scanning projects")
     }

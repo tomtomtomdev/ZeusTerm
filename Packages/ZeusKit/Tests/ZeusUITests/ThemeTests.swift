@@ -88,6 +88,48 @@ struct ThemeTests {
         }
     }
 
+    // Borders are translucent white over the dark surfaces, not the opaque `accentSoft` fill they
+    // used to borrow (Design/HANDOFF "Color — dark theme": border/hairline rgba(255,255,255,0.06),
+    // border/control rgba(255,255,255,0.07–0.08)). 0.06·255≈0x0F, 0.08·255≈0x14 (8-digit #RRGGBBAA).
+    @Test func hairlineAndControlBordersAreTranslucentWhiteInDark() {
+        let t = Theme.dark
+        #expect(t.hairlineHex == "#FFFFFF0F")       // section dividers, white 6%
+        #expect(t.controlBorderHex == "#FFFFFF14")  // control borders, white 8%
+    }
+
+    @Test func hairlineAndControlBordersAreDefinedInBothThemes() {
+        for theme in Theme.allCases {
+            #expect(theme.hairlineHex.hasPrefix("#"))
+            #expect(theme.controlBorderHex.hasPrefix("#"))
+        }
+    }
+
+    // Per-line diff coloring (Design/HANDOFF "Color — diff / file status"): added text #7BD4A8 over a
+    // 10% green tint, deleted text #FF9D9D over a 10% red tint, context #AEB6C8, hunk header #646C80,
+    // file header #7C8597. Promoted from a single flat `textMid` blob into testable tokens.
+    @Test func diffPaletteMatchesSpecDark() {
+        let t = Theme.dark
+        #expect(t.diffAddTextHex == "#7BD4A8")
+        #expect(t.diffAddBgHex == "#35D08B1A")    // rgba(53,208,139,0.10)
+        #expect(t.diffDelTextHex == "#FF9D9D")
+        #expect(t.diffDelBgHex == "#FF6B6B1A")     // rgba(255,107,107,0.10)
+        #expect(t.diffContextHex == "#AEB6C8")
+        #expect(t.diffHunkHex == "#646C80")
+        #expect(t.diffFileHeaderHex == "#7C8597")
+    }
+
+    @Test func diffPaletteIsDefinedInBothThemes() {
+        for theme in Theme.allCases {
+            #expect(theme.diffAddTextHex.hasPrefix("#"))
+            #expect(theme.diffAddBgHex.hasPrefix("#"))
+            #expect(theme.diffDelTextHex.hasPrefix("#"))
+            #expect(theme.diffDelBgHex.hasPrefix("#"))
+            #expect(theme.diffContextHex.hasPrefix("#"))
+            #expect(theme.diffHunkHex.hasPrefix("#"))
+            #expect(theme.diffFileHeaderHex.hasPrefix("#"))
+        }
+    }
+
     @Test func branchLanesAreColoredByName() {
         #expect(Theme.laneHex(forBranch: "main") == "#F5C451")        // Zeus gold
         #expect(Theme.laneHex(forBranch: "develop") == "#6E8BFF")
